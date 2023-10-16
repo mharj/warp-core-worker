@@ -327,6 +327,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 					throw new Error(`Task ${instance.task.uuid} is not triggerable`);
 			}
 		} catch (err) {
+			// istanbul ignore next
 			await this.handleReject(instance, haveError(err));
 		}
 	}
