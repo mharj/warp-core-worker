@@ -46,6 +46,9 @@ jobs:
       - name: Run linter checks
         run: pnpm run lint
 
+      - name: Run linter checks
+        run: pnpm run build
+
       - name: Run and publish code coverage
         if: |
           github.ref == 'refs/heads/main' &&
