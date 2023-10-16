@@ -2,4 +2,3 @@
 
 
 ### TODO
-- restart method and restart rules

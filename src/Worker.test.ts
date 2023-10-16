@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-unused-expressions */
 /* eslint-disable sonarjs/no-duplicate-string */
 /* eslint-disable sonarjs/no-identical-functions */

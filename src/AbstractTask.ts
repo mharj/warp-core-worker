@@ -1,9 +1,9 @@
 import {ILoggerLike} from '@avanio/logger-like';
 import {ITaskInstance} from './interfaces/ITask';
-import {TaskTrigger} from './types/TaskTrigger';
 import {TaskParams} from './types/TaskParams';
 import {TTaskProps} from './types/TaskProps';
 import {TaskStatusType} from './types/TaskStatus';
+import {TaskTrigger} from './types/TaskTrigger';
 
 export abstract class AbstractSimpleTask<TaskType extends string, TaskProps extends TTaskProps, ReturnType, CommonTaskContext>
 	implements ITaskInstance<TaskType, TaskProps, ReturnType, CommonTaskContext>

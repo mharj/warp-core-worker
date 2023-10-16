@@ -7,7 +7,7 @@
 		"build": "tsc",
 		"test": "nyc mocha src",
 		"validate": "tsc --noEmit --project tsconfig.test.json",
-		"lint": "eslint --ext .ts src test"
+		"lint": "eslint --ext .ts src"
 	},
 	"files": [
 		"dist"
