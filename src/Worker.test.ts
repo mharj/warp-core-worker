@@ -109,7 +109,7 @@ describe('Worker', () => {
 	beforeEach(function () {
 		worker = new Worker({
 			taskUniqueIdBuilder: uuid,
-			// logger: console,
+			//	logger: console,
 		});
 		currentCallback = worker.onTaskUpdate(async (_data) => {
 			// console.log('task update', _data);
@@ -217,6 +217,7 @@ describe('Worker', () => {
 					data: 'test1',
 					disabled: false,
 					end: new Date(),
+					errorCount: 0,
 					errors: [],
 					props: {test: 'hello'},
 					runCount: 1,
@@ -231,6 +232,7 @@ describe('Worker', () => {
 					data: 'test1',
 					disabled: false,
 					end: new Date(),
+					errorCount: 0,
 					errors: [],
 					props: {test: 'hello'},
 					runCount: 1,
@@ -245,6 +247,7 @@ describe('Worker', () => {
 					data: 'test1',
 					disabled: false,
 					end: new Date(),
+					errorCount: 0,
 					errors: [],
 					props: {test: 'hello'},
 					runCount: 1,
@@ -259,6 +262,7 @@ describe('Worker', () => {
 					data: 'test2',
 					disabled: false,
 					end: new Date(),
+					errorCount: 0,
 					errors: [],
 					props: {test: 'hello'},
 					runCount: 1,
@@ -273,6 +277,7 @@ describe('Worker', () => {
 					data: 'test2',
 					disabled: false,
 					end: new Date(),
+					errorCount: 0,
 					errors: [],
 					props: {test: 'hello'},
 					runCount: 1,

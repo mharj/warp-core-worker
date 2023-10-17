@@ -12,6 +12,7 @@ export type TaskParams<TP extends TTaskProps, CommonTaskContext> = {
 	status: TaskStatusType;
 	errors: {ts: Date; error: Error}[];
 	runCount: number;
+	errorCount: number;
 	start: Date | undefined;
 	end: Date | undefined;
 	commonContext: CommonTaskContext;

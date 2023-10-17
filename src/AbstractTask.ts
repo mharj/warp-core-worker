@@ -17,6 +17,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	public disabled: boolean;
 	public errors: {ts: Date; error: Error}[];
 	public runCount: number;
+	public errorCount: number;
 	public start: Date | undefined;
 	public end: Date | undefined;
 
@@ -35,6 +36,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 		this.disabled = params.disabled;
 		this.errors = params?.errors ?? [];
 		this.runCount = params?.runCount ?? 0;
+		this.errorCount = params?.errorCount ?? 0;
 		this.start = params?.start ?? undefined;
 		this.end = params?.end ?? undefined;
 		this.commonContext = params.commonContext;
@@ -70,7 +72,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	 * @returns {Promise<boolean>} true if the task should be retried, false otherwise
 	 * @example
 	 * public retry(): Promise<boolean> {
-	 * 	 return Promise.resolve(this.runCount < 4);
+	 * 	 return Promise.resolve(this.errorCount < 4);
 	 * }
 	 */
 	public retry(): Promise<boolean> {

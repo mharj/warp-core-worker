@@ -36,3 +36,7 @@ export function getTaskName(status: TaskStatusType): string {
 export function isStartState(status: TaskStatusType): boolean {
 	return status < 10;
 }
+
+export function isRunningState(status: TaskStatusType): boolean {
+	return status >= 10 && status < 90;
+}

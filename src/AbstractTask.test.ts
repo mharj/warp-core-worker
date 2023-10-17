@@ -27,6 +27,7 @@ const taskInstance = new TestTask(
 		commonContext: {owner: 'test'},
 		disabled: false,
 		end: undefined,
+		errorCount: 0,
 		errors: [],
 		props: {},
 		runCount: 0,
