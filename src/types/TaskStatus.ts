@@ -12,7 +12,10 @@ export const enum TaskStatusType {
 	Rejected = 98,
 }
 
-export function getTaskName(status: TaskStatusType): string {
+export const taskStatusTextTypes = ['created', 'init', 'pending', 'starting', 'running', 'aborted', 'resolved', 'rejected'] as const;
+export type TaskStatusTextType = (typeof taskStatusTextTypes)[number];
+
+export function getTaskName(status: TaskStatusType): TaskStatusTextType {
 	switch (status) {
 		case TaskStatusType.Created:
 			return 'created';

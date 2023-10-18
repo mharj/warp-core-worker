@@ -10,7 +10,10 @@ import {InferDataFromInstance} from './types/TaskData';
 import {TTaskProps} from './types/TaskProps';
 import {TaskStatusType, getTaskName, isRunningState, isStartState} from './types/TaskStatus';
 
-type HandleTaskUpdateCallback<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = (taskData: InferDataFromInstance<TI>) => Promise<void>;
+export type HandleTaskUpdateCallback<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = (
+	taskData: InferDataFromInstance<TI>,
+	taskInstance: FullTaskInstance<unknown, TI>,
+) => Promise<void>;
 
 type FullTaskInstance<ReturnType, TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = ITaskInstance<
 	TI['type'],
@@ -486,7 +489,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 
 	private async notifyTaskUpdate(workerInstance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
 		const data = this.buildTaskAsTaskData(workerInstance.task);
-		await Promise.all(Array.from(this.handleTaskUpdates).map((cb) => cb(data)));
+		await Promise.all(Array.from(this.handleTaskUpdates).map((cb) => cb(data, workerInstance.task)));
 	}
 
 	private buildTaskAsTaskData(task: FullTaskInstance<unknown, TI>): InferDataFromInstance<TI> {

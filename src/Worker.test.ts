@@ -6,7 +6,7 @@ import * as chai from 'chai';
 import 'mocha';
 import * as chaiAsPromised from 'chai-as-promised';
 import {v4 as uuid} from 'uuid';
-import {AbstractSimpleTask, ImportObjectMap, Worker, TaskTrigger, TaskStatusType, FatalTaskError, sleep} from './';
+import {AbstractSimpleTask, ImportObjectMap, Worker, TaskTrigger, TaskStatusType, FatalTaskError, sleep, HandleTaskUpdateCallback} from './';
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
@@ -103,7 +103,7 @@ const importMapping: ImportObjectMap<Test1 | Test2 | Test3> = {
 };
 
 let worker: Worker<unknown, Test1 | Test2 | Test3>;
-let currentCallback: (arg: any) => Promise<void>;
+let currentCallback: HandleTaskUpdateCallback<Test1 | Test2 | Test3>;
 
 describe('Worker', () => {
 	beforeEach(function () {
@@ -111,7 +111,8 @@ describe('Worker', () => {
 			taskUniqueIdBuilder: uuid,
 			//	logger: console,
 		});
-		currentCallback = worker.onTaskUpdate(async (_data) => {
+		currentCallback = worker.onTaskUpdate(async (_data, task) => {
+			console.log('task update', _data.status, await task.getDescription());
 			// console.log('task update', _data);
 		});
 	});
