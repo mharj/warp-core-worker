@@ -48,6 +48,6 @@ describe('Test', function () {
 		await expect(taskInstance.onResolved()).to.eventually.be.undefined;
 		await expect(taskInstance.onErrorSleep()).to.eventually.be.equal(0);
 		await expect(taskInstance.retry()).to.eventually.be.false;
-		await expect(taskInstance.allowRestart()).to.be.rejectedWith('Task is not allowed to restart');
+		await expect(taskInstance.allowRestart()).to.be.rejectedWith(`Task ${taskInstance.uuid} ${taskInstance.type} is not allowed to restart`);
 	});
 });

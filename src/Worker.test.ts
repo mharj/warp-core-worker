@@ -111,9 +111,8 @@ describe('Worker', () => {
 			taskUniqueIdBuilder: uuid,
 			//	logger: console,
 		});
-		currentCallback = worker.onTaskUpdate(async (_data, task) => {
-			console.log('task update', _data.status, await task.getDescription());
-			// console.log('task update', _data);
+		currentCallback = worker.onTaskUpdate(async (_data, _task) => {
+			// console.log('task update', _data.status, await task.getDescription());
 		});
 	});
 	it('should initialize a task', async function () {
@@ -191,7 +190,7 @@ describe('Worker', () => {
 		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(Error, `Task ${task.uuid} ${task.type} is not instant and cannot be waited`);
 		await sleep(450);
 		expect(task.runCount).to.be.eq(3); // interval task runs also at start
-		await expect(worker.restartTask(task)).to.be.eventually.rejectedWith(Error, `Task ${task.uuid} ${task.type} is not instant and cannot be restarted`);
+		await expect(worker.restartTask(task)).to.be.eventually.rejectedWith(Error, `Task ${task.uuid} ${task.type} is not allowed to restart`);
 		await worker.deleteTask(task);
 		await expect(task.getDescription()).to.be.eventually.eq('test2 task');
 	});

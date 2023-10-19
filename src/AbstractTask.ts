@@ -56,15 +56,15 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	public abstract runTask(): Promise<ReturnType>;
 
 	/**
-	 * Check if the task is allowed to restart
+	 * Check if the task instance is allowed to restart
 	 * @returns {Promise<void>}
 	 * @example
 	 * public allowRestart(): Promise<void> {
-	 * 	 return this.status === TaskStatusType.REJECTED ? Promise.resolve() : Promise.reject(new Error('Task is not allowed to restart'));
+	 * 	 return this.status === TaskStatusType.REJECTED ? Promise.resolve() : Promise.reject(new Error(`Task ${this.uuid} ${this.type} is not allowed to restart`));
 	 * }
 	 */
 	public allowRestart(): Promise<void> {
-		return Promise.reject(new Error('Task is not allowed to restart'));
+		return Promise.reject(new Error(`Task ${this.uuid} ${this.type} is not allowed to restart`));
 	}
 
 	/**

@@ -131,6 +131,8 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		);
 		if (classInstance.trigger.type !== 'instant') {
 			classInstance.status = TaskStatusType.Created; // set status to created if task is not instant (allow to start)
+			classInstance.start = undefined; // reset start
+			classInstance.end = undefined; // reset end
 		}
 		classInstance.taskError = params.taskError; // attach task error from import
 		if (classInstance.singleInstance) {
@@ -193,14 +195,19 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	public async restartTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<void> {
 		const instance = this.tasks.get(task.uuid);
 		this.assertInstance(instance, task.uuid);
-		if (instance.task.trigger.type !== 'instant') {
-			throw new Error(`Task ${instance.task.uuid} ${instance.type} is not instant and cannot be restarted`);
-		}
+		// check if we can restart this task
 		await instance.task.allowRestart();
 		!instance.promise.isDone && instance.promise.reject(new Error('Task restart')); // trow error to reject old promise if someone is waiting for it
-		instance.promise = new DeferredPromise<unknown>(); // reset promise
-		await this.setTaskStatus(instance, TaskStatusType.Pending);
-		this.handleTriggerConnection(instance);
+		// check if task is already running just before reset and start
+		if (isRunningState(instance.task.status)) {
+			throw new Error(`Task ${instance.task.uuid} ${instance.type} is already running`);
+		}
+		// reset and run task now
+		setTimeout(async () => {
+			this.resetTaskInstance(instance);
+			await this.setTaskStatus(instance, TaskStatusType.Pending);
+			this.runTask(instance);
+		}, 0);
 	}
 
 	public getTaskByUuid(uuid: string): FullTaskInstance<unknown, TI> | undefined {
@@ -423,19 +430,24 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		}
 		if (!instance.task.start) {
 			instance.task.start = new Date();
+			instance.task.end = undefined;
 		}
-		instance.task.runCount++;
-		this.assertIfAbort(instance);
+		// on init callback
 		if (instance.task.status === TaskStatusType.Init) {
-			await instance.task.onInit();
 			this.assertIfAbort(instance);
+			await instance.task.onInit();
 		}
+		// pre-run
+		this.assertIfAbort(instance);
 		await this.setTaskStatus(instance, TaskStatusType.Starting);
 		await instance.task.onPreStart();
+		// run step
+		instance.task.runCount++;
 		await this.setTaskStatus(instance, TaskStatusType.Running);
 		this.assertIfAbort(instance);
 		const data = await instance.task.runTask();
 		instance.task.data = data; // store data to task instance
+		// handle task resolve
 		const status = await this.handleResolve(instance);
 		instance.promise.resolve(data); // solve waiting promise
 		return status;
