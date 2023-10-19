@@ -28,7 +28,7 @@ const taskInstance = new TestTask(
 		disabled: false,
 		end: undefined,
 		errorCount: 0,
-		errors: [],
+		errors: new Set(),
 		props: {},
 		runCount: 0,
 		start: undefined,

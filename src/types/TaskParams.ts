@@ -10,7 +10,7 @@ export type TaskParams<TP extends TTaskProps, CommonTaskContext> = {
 	disabled: boolean;
 	props: TP;
 	status: TaskStatusType;
-	errors: {ts: Date; error: Error}[];
+	errors: Set<{ts: Date; error: Error}>;
 	runCount: number;
 	errorCount: number;
 	start: Date | undefined;

@@ -15,7 +15,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	public props: TaskProps;
 	public status: TaskStatusType;
 	public disabled: boolean;
-	public errors: {ts: Date; error: Error}[];
+	public errors: Set<{ts: Date; error: Error}>;
 	public runCount: number;
 	public errorCount: number;
 	public start: Date | undefined;

@@ -80,7 +80,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 				disabled: false,
 				end: undefined,
 				errorCount: 0,
-				errors: [],
+				errors: new Set(),
 				props,
 				runCount: 0,
 				start: undefined,
@@ -303,7 +303,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			instance.promise.reject(new Error('Task reset')); // trow error to reject old promise if someone is waiting for it
 		}
 		instance.promise = new DeferredPromise<unknown>(); // reset promise
-		instance.task.errors = []; // reset errors // TODO maybe limit x last errors by config
+		instance.task.errors = new Set(); // reset errors // TODO maybe limit x last errors by config
 		instance.task.start = undefined; // reset start
 		instance.task.end = undefined; // reset end
 		instance.task.status = TaskStatusType.Init; // reset status
@@ -370,7 +370,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 				isTaskRetired = await this.runTaskFlow(instance);
 			} catch (err) {
 				instance.task.errorCount++;
-				instance.task.errors.push({ts: new Date(), error: haveError(err)});
+				instance.task.errors.add({ts: new Date(), error: haveError(err)});
 				if (err instanceof FatalTaskError) {
 					this.logger?.error(`Task ${instance.task.uuid} ${instance.type} ${err.name} error`);
 					isTaskRetired = await this.handleReject(instance, err);
@@ -378,7 +378,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 					const msg = `Task ${instance.task.uuid} ${instance.type} retry limit reached`;
 					this.logger?.error(msg);
 					const limitError = new FatalTaskError(msg);
-					instance.task.errors.push({ts: new Date(), error: haveError(limitError)});
+					instance.task.errors.add({ts: new Date(), error: haveError(limitError)});
 					isTaskRetired = await this.handleReject(instance, limitError);
 				} else {
 					this.logger?.info(`Task ${instance.task.uuid} ${instance.type} retry`);
