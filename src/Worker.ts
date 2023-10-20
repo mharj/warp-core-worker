@@ -114,6 +114,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		TaskClass: ITaskConstructorInferFromInstance<TI>,
 		params: InferDataFromInstance<TI>,
 	): TaskWorkerInstance<FullTaskInstance<unknown, TI>> {
+		let haveReset = false;
 		const abortController = new AbortController();
 		const {uuid, commonContext, props, disabled, status, errorCount, errors, runCount, start, end, data} = params;
 		const classInstance = new TaskClass(
@@ -137,6 +138,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			classInstance.status = TaskStatusType.Created; // set status to created if task is not instant (allow to start)
 			classInstance.start = undefined; // reset start
 			classInstance.end = undefined; // reset end
+			haveReset = true;
 		}
 		classInstance.taskError = params.taskError; // attach task error from import
 		if (classInstance.singleInstance) {
@@ -148,6 +150,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		classInstance.getDescription(); // pre-build description
 		const currentWorkerInstance = this.handleTaskInstanceBuild(abortController, classInstance);
 		this.tasks.set(classInstance.uuid, currentWorkerInstance); // store task
+		haveReset && this.setTaskStatus(currentWorkerInstance, classInstance.status); // trigger status change after reset (async, not wait here)
 		// handle task promises if task is already resolved/rejected
 		if (currentWorkerInstance.task.trigger.type === 'instant') {
 			if (currentWorkerInstance.task.status === TaskStatusType.Resolved) {
