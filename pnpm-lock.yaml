@@ -8,6 +8,9 @@ dependencies:
   '@avanio/logger-like':
     specifier: ^0.1.1
     version: 0.1.1
+  '@avanio/sleep':
+    specifier: ^0.0.2
+    version: 0.0.2
   cron:
     specifier: ^3.1.1
     version: 3.1.1
@@ -103,6 +106,10 @@ packages:
 
   /@avanio/logger-like@0.1.1:
     resolution: {integrity: sha512-5u1ZX6kR9wgt4eYQYrgdhKL0WAsiWz2Kbinp+lPyoEs4/uFl2BhgG5X7obG2OZ2NvZL4f76X6Qm+QsT/o5BOYA==}
+    dev: false
+
+  /@avanio/sleep@0.0.2:
+    resolution: {integrity: sha512-Y8RIkuXmyjeUsVM7ZYlBVzDB+c5JHUBURwuTHTW+CUKxRkgfTolUf5CQox02wxyagETgRdMPN8x2joQ4Ie1B2A==}
     dev: false
 
   /@babel/code-frame@7.22.13:

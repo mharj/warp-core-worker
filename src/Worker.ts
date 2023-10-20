@@ -1,11 +1,11 @@
 import {ILoggerLike} from '@avanio/logger-like';
+import {sleep} from '@avanio/sleep';
 import * as Cron from 'cron';
 import {ITaskConstructorInferFromInstance, ITaskInstance} from './interfaces/ITask';
 import {DeferredPromise} from './lib/DeferredPromise';
 import {haveError} from './lib/errorUtil';
 import {FatalTaskError} from './lib/FatalTaskError';
 import {TaskDisabledError} from './lib/TaskDisabledError';
-import {sleep} from './lib/timeUtils';
 import {InferDataFromInstance} from './types/TaskData';
 import {TTaskProps} from './types/TaskProps';
 import {TaskStatusType, getTaskName, isRunningState, isStartState} from './types/TaskStatus';
@@ -28,6 +28,8 @@ export type ImportObjectMap<CType extends ITaskInstance<string, TTaskProps, unkn
 
 export type WorkerOptions = {
 	taskUniqueIdBuilder: () => string;
+	/** delay before continue to next flow step */
+	stepFlowDelay?: number;
 	logger?: ILoggerLike;
 };
 
@@ -46,9 +48,11 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	private logger?: ILoggerLike;
 
 	private handleTaskUpdates = new Set<HandleTaskUpdateCallback<TI>>();
+	private stepFlowDelay: number;
 	constructor(opts: WorkerOptions) {
 		this.buildTaskUniqueId = opts.taskUniqueIdBuilder;
 		this.logger = opts.logger;
+		this.stepFlowDelay = opts.stepFlowDelay || 0;
 	}
 
 	public onTaskUpdate(taskUpdateCallback: HandleTaskUpdateCallback<TI>): HandleTaskUpdateCallback<TI> {
@@ -383,10 +387,11 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 				} else {
 					this.logger?.info(`Task ${instance.task.uuid} ${instance.type} retry`);
 					const sleepTime = await instance.task.onErrorSleep();
+					await sleep(this.stepFlowDelay, {signal: instance.abortController.signal});
 					if (sleepTime > 0) {
 						this.logger?.debug(`Task ${instance.task.uuid} ${instance.type} sleep ${sleepTime}ms`);
 						await this.setTaskStatus(instance, TaskStatusType.Pending);
-						await sleep(sleepTime);
+						await sleep(sleepTime, {signal: instance.abortController.signal});
 					}
 				}
 			}
@@ -434,14 +439,17 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		}
 		// on init callback
 		if (instance.task.status === TaskStatusType.Init) {
+			await sleep(this.stepFlowDelay, {signal: instance.abortController.signal});
 			this.assertIfAbort(instance);
 			await instance.task.onInit();
 		}
 		// pre-run
+		await sleep(this.stepFlowDelay, {signal: instance.abortController.signal});
 		this.assertIfAbort(instance);
 		await this.setTaskStatus(instance, TaskStatusType.Starting);
 		await instance.task.onPreStart();
 		// run step
+		await sleep(this.stepFlowDelay, {signal: instance.abortController.signal});
 		instance.task.runCount++;
 		await this.setTaskStatus(instance, TaskStatusType.Running);
 		this.assertIfAbort(instance);

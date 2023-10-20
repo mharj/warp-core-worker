@@ -2,11 +2,12 @@
 /* eslint-disable no-unused-expressions */
 /* eslint-disable sonarjs/no-duplicate-string */
 /* eslint-disable sonarjs/no-identical-functions */
+import {sleep} from '@avanio/sleep';
 import * as chai from 'chai';
 import 'mocha';
 import * as chaiAsPromised from 'chai-as-promised';
 import {v4 as uuid} from 'uuid';
-import {AbstractSimpleTask, ImportObjectMap, Worker, TaskTrigger, TaskStatusType, FatalTaskError, sleep, HandleTaskUpdateCallback} from './';
+import {AbstractSimpleTask, ImportObjectMap, Worker, TaskTrigger, TaskStatusType, FatalTaskError, HandleTaskUpdateCallback} from './';
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
