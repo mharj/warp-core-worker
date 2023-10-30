@@ -103,8 +103,8 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 				return existingTask.task;
 			}
 		}
-		classInstance.getDescription(); // pre-build description
 		const currentWorkerInstance = this.handleTaskInstanceBuild(abortController, classInstance);
+		classInstance.getDescription().catch((err) => this.handleReject(currentWorkerInstance, err)); // pre-build description
 		await this.setTaskStatus(currentWorkerInstance, classInstance.status); // change status to created
 		this.tasks.set(classInstance.uuid, currentWorkerInstance); // store task
 		return classInstance;
@@ -147,10 +147,10 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 				return existingTask;
 			}
 		}
-		classInstance.getDescription(); // pre-build description
 		const currentWorkerInstance = this.handleTaskInstanceBuild(abortController, classInstance);
+		classInstance.getDescription().catch((err) => this.handleReject(currentWorkerInstance, err)); // pre-build description
 		this.tasks.set(classInstance.uuid, currentWorkerInstance); // store task
-		haveReset && this.setTaskStatus(currentWorkerInstance, classInstance.status); // trigger status change after reset (async, not wait here)
+		haveReset && this.setTaskStatus(currentWorkerInstance, classInstance.status).catch((err) => this.handleReject(currentWorkerInstance, err)); // trigger status change after reset (async, not wait here)
 		// handle task promises if task is already resolved/rejected
 		if (currentWorkerInstance.task.trigger.type === 'instant') {
 			if (currentWorkerInstance.task.status === TaskStatusType.Resolved) {
@@ -194,7 +194,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		}
 		// not started yet - start it
 		if (instance.task.status < TaskStatusType.Init) {
-			this.startTask(task);
+			await this.startTask(task);
 		}
 		return instance.promise as Promise<ReturnType>;
 	}
@@ -213,7 +213,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		setTimeout(async () => {
 			this.resetTaskInstance(instance);
 			await this.setTaskStatus(instance, TaskStatusType.Pending);
-			this.runTask(instance);
+			await this.runTask(instance);
 		}, 0);
 	}
 
@@ -324,8 +324,8 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 					if (!isStartState(instance.task.status)) {
 						return;
 					}
-					setTimeout(() => {
-						this.runTask(instance);
+					setTimeout(async () => {
+						await this.runTask(instance);
 					}, 0);
 					break;
 				case 'interval':
@@ -334,8 +334,8 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 					}
 
 					isImport && this.resetTaskInstance(instance);
-					setTimeout(() => {
-						this.runTask(instance);
+					setTimeout(async () => {
+						await this.runTask(instance);
 					}, 0);
 					instance.intervalRef = setInterval(async () => {
 						this.resetTaskInstance(instance);
