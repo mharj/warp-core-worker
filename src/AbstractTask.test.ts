@@ -43,7 +43,7 @@ const taskInstance = new TestTask(
 describe('Test', function () {
 	it('should check default implementations', async function () {
 		await expect(taskInstance.onInit()).to.eventually.be.undefined;
-		await expect(taskInstance.onPreStart()).to.eventually.be.undefined;
+		await expect(taskInstance.onPreStart()).to.eventually.be.true;
 		await expect(taskInstance.onRejected()).to.eventually.be.undefined;
 		await expect(taskInstance.onResolved()).to.eventually.be.undefined;
 		await expect(taskInstance.onErrorSleep()).to.eventually.be.equal(0);

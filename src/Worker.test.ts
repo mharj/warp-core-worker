@@ -34,8 +34,9 @@ class Test1 extends AbstractSimpleTask<'test1', {test: string; onInit?: true; on
 		this.props.onInit = true;
 	}
 
-	public async onPreStart(): Promise<void> {
+	public async onPreStart(): Promise<boolean> {
 		this.props.onPreStart = true;
+		return true;
 	}
 
 	public async onResolved(): Promise<void> {

@@ -87,8 +87,8 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 		return Promise.resolve();
 	}
 
-	public onPreStart(): Promise<void> {
-		return Promise.resolve();
+	public onPreStart(): Promise<boolean> {
+		return Promise.resolve(true);
 	}
 
 	public onRejected(): Promise<void> {

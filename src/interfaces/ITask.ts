@@ -35,8 +35,9 @@ export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskP
 	 * how to use:
 	 * - clear old errors
 	 * - validate current props
+	 * @returns true if the task should be started
 	 */
-	onPreStart(): Promise<void>;
+	onPreStart(): Promise<boolean>;
 }
 
 export type ITaskConstructor<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = new (

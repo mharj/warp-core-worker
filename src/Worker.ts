@@ -1,4 +1,4 @@
-import {ILoggerLike} from '@avanio/logger-like';
+import {ILoggerLike, LogLevel, LogMapping, MapLogger} from '@avanio/logger-like';
 import {sleep} from '@avanio/sleep';
 import * as Cron from 'cron';
 import {ITaskConstructorInferFromInstance, ITaskInstance} from './interfaces/ITask';
@@ -9,6 +9,24 @@ import {TaskDisabledError} from './lib/TaskDisabledError';
 import {InferDataFromInstance} from './types/TaskData';
 import {TTaskProps} from './types/TaskProps';
 import {TaskStatusType, getTaskName, isRunningState, isStartState} from './types/TaskStatus';
+
+const defaultLogMap = {
+	abort: LogLevel.Info,
+	delete: LogLevel.Error,
+	flow_error: LogLevel.None,
+	flow_limit: LogLevel.None,
+	flow_retry: LogLevel.None,
+	flow_sleep: LogLevel.None,
+	not_start: LogLevel.None,
+	rejected: LogLevel.Error,
+	resolved: LogLevel.Info,
+	start: LogLevel.Debug,
+	status_change_default: LogLevel.None,
+	status_change_error: LogLevel.None,
+	status_change_info: LogLevel.None,
+};
+
+export type TaskWorkerLogMapping = LogMapping<keyof typeof defaultLogMap>; // build type
 
 export type HandleTaskUpdateCallback<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = (
 	taskData: InferDataFromInstance<TI>,
@@ -45,14 +63,14 @@ interface TaskWorkerInstance<TI extends ITaskInstance<string, TTaskProps, unknow
 export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>> {
 	private buildTaskUniqueId: () => string;
 	private tasks = new Map<string, TaskWorkerInstance<FullTaskInstance<unknown, TI>>>();
-	private logger?: ILoggerLike;
+	private logger: MapLogger<TaskWorkerLogMapping>;
 
 	private handleTaskUpdates = new Set<HandleTaskUpdateCallback<TI>>();
 	private stepFlowDelay: number;
-	constructor(opts: WorkerOptions) {
+	constructor(opts: WorkerOptions, logMapping?: Partial<TaskWorkerLogMapping>) {
 		this.buildTaskUniqueId = opts.taskUniqueIdBuilder;
-		this.logger = opts.logger;
 		this.stepFlowDelay = opts.stepFlowDelay || 0;
+		this.logger = new MapLogger(opts.logger, Object.assign({}, defaultLogMap, logMapping));
 	}
 
 	public onTaskUpdate(taskUpdateCallback: HandleTaskUpdateCallback<TI>): HandleTaskUpdateCallback<TI> {
@@ -65,7 +83,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	}
 
 	public addLogger(logger: ILoggerLike) {
-		this.logger = logger;
+		this.logger.setLogger(logger);
 	}
 
 	public getTaskCount(): number {
@@ -256,7 +274,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			instance.intervalRef = undefined;
 		}
 		this.tasks.delete(task.uuid);
-		this.logger?.debug(`Task ${instance.task.uuid} ${instance.type} deleted`);
+		this.logger.logKey('delete', `Task ${instance.task.uuid} ${instance.type} deleted`);
 		await instance.promise; // wait promise to be resolved/rejected
 	}
 
@@ -280,7 +298,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 				}
 			}
 		} catch (err) {
-			this.logger?.error(`Task import error: ${haveError(err)}`);
+			this.logger.error(`Task import error: ${haveError(err)}`);
 		}
 	}
 
@@ -295,7 +313,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	}
 
 	private async handleTaskAbort(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>) {
-		this.logger?.debug(`Task ${instance.task.uuid} ${instance.type} abort`);
+		this.logger.logKey('abort', `Task ${instance.task.uuid} ${instance.type} abort`);
 		// if task is not resolved/rejected yet
 		if (instance.task.status < 90) {
 			await this.setTaskStatus(instance, TaskStatusType.Aborted);
@@ -310,7 +328,6 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			instance.promise.reject(new Error('Task reset')); // trow error to reject old promise if someone is waiting for it
 		}
 		instance.promise = new DeferredPromise<unknown>(); // reset promise
-		instance.task.errors = new Set(); // reset errors // TODO maybe limit x last errors by config
 		instance.task.start = undefined; // reset start
 		instance.task.end = undefined; // reset end
 		instance.task.status = TaskStatusType.Init; // reset status
@@ -369,7 +386,6 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	private async runTask(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
 		let isTaskRetired = false;
 		while (!isTaskRetired) {
-			this.logger?.debug(`Task ${instance.task.uuid} ${instance.type} run ${instance.task.runCount}`);
 			try {
 				if (instance.task.disabled) {
 					throw new TaskDisabledError(`Task ${instance.task.uuid} ${instance.type} is disabled`);
@@ -379,20 +395,20 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 				instance.task.errorCount++;
 				instance.task.errors.add({ts: new Date(), error: haveError(err)});
 				if (err instanceof FatalTaskError) {
-					this.logger?.error(`Task ${instance.task.uuid} ${instance.type} ${err.name} error`);
+					this.logger.logKey('flow_error', `Task ${instance.task.uuid} ${instance.type} ${err.name} error`);
 					isTaskRetired = await this.handleReject(instance, err);
 				} else if (!(await instance.task.retry())) {
 					const msg = `Task ${instance.task.uuid} ${instance.type} retry limit reached`;
-					this.logger?.error(msg);
+					this.logger.logKey('flow_limit', msg);
 					const limitError = new FatalTaskError(msg);
 					instance.task.errors.add({ts: new Date(), error: haveError(limitError)});
 					isTaskRetired = await this.handleReject(instance, limitError);
 				} else {
-					this.logger?.info(`Task ${instance.task.uuid} ${instance.type} retry`);
+					this.logger.logKey('flow_retry', `Task ${instance.task.uuid} ${instance.type} retry`);
 					const sleepTime = await instance.task.onErrorSleep();
 					await sleep(this.stepFlowDelay, {signal: instance.abortController.signal});
 					if (sleepTime > 0) {
-						this.logger?.debug(`Task ${instance.task.uuid} ${instance.type} sleep ${sleepTime}ms`);
+						this.logger.logKey('flow_sleep', `Task ${instance.task.uuid} ${instance.type} sleep ${sleepTime}ms`);
 						await this.setTaskStatus(instance, TaskStatusType.Pending);
 						await sleep(sleepTime, {signal: instance.abortController.signal});
 					}
@@ -406,7 +422,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * @returns true if task should be retried
 	 */
 	private async handleReject(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>, err: Error): Promise<boolean> {
-		this.logger?.error(`Task ${instance.task.uuid} ${instance.type} rejected`);
+		this.logger.logKey('rejected', `Task ${instance.task.uuid} ${instance.type} rejected`);
 		instance.task.end = new Date();
 		instance.task.taskError = err;
 		await this.setTaskStatus(instance, TaskStatusType.Rejected);
@@ -421,7 +437,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * @returns true if task should be retried
 	 */
 	private async handleResolve(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<boolean> {
-		this.logger?.debug(`Task ${instance.task.uuid} ${instance.type} resolved`);
+		this.logger.logKey('resolved', `Task ${instance.task.uuid} ${instance.type} resolved`);
 		instance.task.end = new Date();
 		await this.setTaskStatus(instance, TaskStatusType.Resolved);
 		await instance.task.onResolved();
@@ -449,9 +465,16 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		// pre-run
 		await sleep(this.stepFlowDelay, {signal: instance.abortController.signal});
 		this.assertIfAbort(instance);
+		// check if task is allowed to start
+		if (!(await instance.task.onPreStart())) {
+			this.logger.logKey('not_start', `Task ${instance.task.uuid} ${instance.type} not started`);
+			this.resetTaskInstance(instance);
+			await this.setTaskStatus(instance, instance.task.status); // update status
+			return true; // task not needed to be started
+		}
 		await this.setTaskStatus(instance, TaskStatusType.Starting);
-		await instance.task.onPreStart();
 		// run step
+		this.logger.logKey('start', `Task ${instance.task.uuid} ${instance.type} run ${instance.task.runCount}`);
 		await sleep(this.stepFlowDelay, {signal: instance.abortController.signal});
 		instance.task.runCount++;
 		await this.setTaskStatus(instance, TaskStatusType.Running);
@@ -497,14 +520,14 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		const message = `Task ${workerInstance.task.uuid} ${workerInstance.type} status changed ${statusInfo}`;
 		switch (status) {
 			case TaskStatusType.Rejected:
-				this.logger?.error(message);
+				this.logger.logKey('status_change_error', message);
 				break;
 			case TaskStatusType.Init:
 			case TaskStatusType.Resolved:
-				this.logger?.info(message);
+				this.logger.logKey('status_change_info', message);
 				break;
 			default:
-				this.logger?.debug(message);
+				this.logger.logKey('status_change_default', message);
 		}
 		workerInstance.task.status = status;
 		return this.notifyTaskUpdate(workerInstance);
