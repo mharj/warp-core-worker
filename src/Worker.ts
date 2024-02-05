@@ -170,20 +170,16 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		this.tasks.set(classInstance.uuid, currentWorkerInstance); // store task
 		haveReset && this.setTaskStatus(currentWorkerInstance, classInstance.status).catch((err) => this.handleReject(currentWorkerInstance, err)); // trigger status change after reset (async, not wait here)
 		// handle task promises if task is already resolved/rejected
-		if (currentWorkerInstance.task.trigger.type === 'instant') {
+		if (currentWorkerInstance.task.trigger.type === 'instant' && !currentWorkerInstance.promise.isDone) {
 			if (currentWorkerInstance.task.status === TaskStatusType.Resolved) {
-				setTimeout(() => {
-					!currentWorkerInstance.promise.isDone && currentWorkerInstance.promise.resolve(currentWorkerInstance.task.data);
-				}, 10); // delay resolve a bit
+				currentWorkerInstance.promise.resolve(currentWorkerInstance.task.data);
 			}
 			if (currentWorkerInstance.task.status === TaskStatusType.Rejected) {
-				// istanbul ignore next
-				if (!currentWorkerInstance.task.taskError) {
-					throw new Error(`Task ${currentWorkerInstance.task.uuid} ${currentWorkerInstance.type} rejected but no error data found`);
-				}
-				setTimeout(() => {
-					!currentWorkerInstance.promise.isDone && currentWorkerInstance.promise.reject(currentWorkerInstance.task.taskError);
-				}, 10); // delay reject a bit
+				currentWorkerInstance.promise.catch(() => {}); // ignore promise rejection (we are resolving it now)
+				currentWorkerInstance.promise.reject(
+					currentWorkerInstance.task.taskError ||
+						new Error(`Task ${currentWorkerInstance.task.uuid} ${currentWorkerInstance.type} rejected but no error data found`),
+				);
 			}
 		}
 		return currentWorkerInstance;
