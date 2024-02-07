@@ -134,6 +134,37 @@ describe('Worker', () => {
 		expect(task.taskError).to.be.undefined;
 		await worker.restartTask(task);
 		await worker.waitTask(task);
+		const getTasks = worker.getTasksByType('test1');
+		expect(getTasks?.[0]).to.be.eq(task);
+	});
+	it('should get current task with getOrInitializeTask and hook to promise (init)', async function () {
+		// initial data
+		const oldTask = await worker.initializeTask(Test1, {test: 'test'}, {});
+		// test
+		const task = await worker.getOrInitializeTask(oldTask.uuid, 'test1', Test1, {test: 'test'}, {});
+		expect(task.uuid).to.be.eq(oldTask.uuid);
+		const data = await worker.waitTask(task);
+		expect(data).to.be.eq('test1');
+	});
+	it('should get current task with getOrInitializeTask and hook to promise (running)', async function () {
+		// initial data
+		const oldTask = await worker.initializeTask(Test1, {test: 'test'}, {});
+		await worker.startTask(oldTask);
+		// test
+		const task = await worker.getOrInitializeTask(oldTask.uuid, 'test1', Test1, {test: 'test'}, {});
+		expect(task.uuid).to.be.eq(oldTask.uuid);
+		const data = await worker.waitTask(task);
+		expect(data).to.be.eq('test1');
+	});
+	it('should get current task with getOrInitializeTask and hook to promise (resolved)', async function () {
+		// initial data
+		const oldTask = await worker.initializeTask(Test1, {test: 'test'}, {});
+		await worker.waitTask(oldTask);
+		// test
+		const task = await worker.getOrInitializeTask(oldTask.uuid, 'test1', Test1, {test: 'test'}, {});
+		expect(task.uuid).to.be.eq(oldTask.uuid);
+		const data = await worker.waitTask(task);
+		expect(data).to.be.eq('test1');
 	});
 	it('should initialize a task without start', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'test'}, {});

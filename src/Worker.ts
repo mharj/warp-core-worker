@@ -90,6 +90,15 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		return this.tasks.size;
 	}
 
+	/**
+	 * Initialize task instance and store it in worker
+	 * @param TaskClass Task class
+	 * @param props Task props
+	 * @param commonContext Common context
+	 * @returns Task class instance
+	 * @example
+	 * const task = await worker.initializeTask(MyTask, {prop1: 'value1'}, {common: 'context'});
+	 */
 	public async initializeTask<CType extends TI>(
 		TaskClass: ITaskConstructorInferFromInstance<CType>,
 		props: CType['props'],
@@ -126,6 +135,34 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		await this.setTaskStatus(currentWorkerInstance, classInstance.status); // change status to created
 		this.tasks.set(classInstance.uuid, currentWorkerInstance); // store task
 		return classInstance;
+	}
+
+	/**
+	 * Get or initialize task instance and store it in worker
+	 * @param uuid Task uuid or undefined
+	 * @param type Task type
+	 * @param TaskClass Task class
+	 * @param props Task props
+	 * @param commonContext Common context
+	 * @returns return new Task class instance or existing task instance
+	 * @example
+	 * const task = await worker.getOrInitializeTask(oldTaskUuid, 'type', MyTask, {prop1: 'value1'}, {common: 'context'});
+	 */
+	public getOrInitializeTask<CType extends TI>(
+		uuid: string | undefined,
+		type: CType['type'],
+		TaskClass: ITaskConstructorInferFromInstance<CType>,
+		props: CType['props'],
+		commonContext: CType['commonContext'],
+	): Promise<FullTaskInstance<CType['data'], CType>> | FullTaskInstance<CType['data'], CType> {
+		const task = (uuid && this.getTaskByUuid(uuid)) || undefined;
+		if (task) {
+			if (task.type !== type) {
+				throw new Error(`Task ${task.uuid} type mismatch, expected ${type} but got ${task.type}`);
+			}
+			return task;
+		}
+		return this.initializeTask(TaskClass, props, commonContext);
 	}
 
 	private reloadImportTask(
@@ -186,8 +223,11 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	}
 
 	/**
-	 * Start this task
+	 * Start this task instance
 	 * @param task Task instance
+	 * @returns Promise that will be resolved when task is started
+	 * @example
+	 * await worker.startTask(task);
 	 */
 	public async startTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<void> {
 		const instance = this.tasks.get(task.uuid);
@@ -200,6 +240,11 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		await this.handleTriggerConnection(instance);
 	}
 
+	/**
+	 * Wait for this task to be resolved/rejected (also start task if not started yet)
+	 * @param task Task instance
+	 * @returns ReturnType of task (resolved value or rejected error)
+	 */
 	public async waitTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<ReturnType> {
 		const instance = this.tasks.get(task.uuid);
 		this.assertInstance(instance, task.uuid);
@@ -213,6 +258,10 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		return instance.promise as Promise<ReturnType>;
 	}
 
+	/**
+	 * Restart this task instance if it's not in running state
+	 * @param task Task instance
+	 */
 	public async restartTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<void> {
 		const instance = this.tasks.get(task.uuid);
 		this.assertInstance(instance, task.uuid);
@@ -231,9 +280,24 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		}, 0);
 	}
 
+	/**
+	 * Get task instance by uuid
+	 * @param uuid
+	 * @returns Task instance or undefined
+	 */
 	public getTaskByUuid(uuid: string): FullTaskInstance<unknown, TI> | undefined {
 		const instance = this.tasks.get(uuid);
 		return instance?.task;
+	}
+
+	/**
+	 * Get all task instances based on type
+	 * @returns Array of task instances
+	 */
+	public getTasksByType<T extends TI['type']>(type: T): FullTaskInstance<unknown, ITaskInstance<T, TTaskProps, unknown, CommonTaskContext>>[] {
+		return Array.from(this.tasks.values())
+			.filter((task) => task.type === type)
+			.map((task) => task.task) as FullTaskInstance<unknown, ITaskInstance<T, TTaskProps, unknown, CommonTaskContext>>[];
 	}
 
 	/**
@@ -274,6 +338,11 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		await instance.promise; // wait promise to be resolved/rejected
 	}
 
+	/**
+	 * method to import tasks back to worker (like from database or other storage)
+	 * @param data
+	 * @param importMapping
+	 */
 	public async importTasks(data: InferDataFromInstance<TI>[], importMapping: ImportObjectMap<TI>): Promise<void> {
 		const taskInstances = data.reduce<TaskWorkerInstance<FullTaskInstance<unknown, TI>>[]>((acc, taskData) => {
 			const TaskClass = importMapping[taskData.type] as ITaskConstructorInferFromInstance<TI> | undefined;
