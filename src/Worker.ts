@@ -82,10 +82,23 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		this.handleTaskUpdates.delete(taskUpdateCallback);
 	}
 
+	/**
+	 * set logger instance (or change it if already set on constructor)
+	 * @param logger any common logger instance (console, log4js, winston, etc.)
+	 * @see {@link https://www.npmjs.com/package/@avanio/logger-like | @avanio/logger-like} for more info.
+	 * @example
+	 * worker.setLogger(console);
+	 */
 	public addLogger(logger: ILoggerLike) {
 		this.logger.setLogger(logger);
 	}
 
+	/**
+	 * get current task count in task worker
+	 * @returns {number} number of tasks
+	 * @example
+	 * const taskCount = worker.getTaskCount();
+	 */
 	public getTaskCount(): number {
 		return this.tasks.size;
 	}
@@ -223,7 +236,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	}
 
 	/**
-	 * Start this task instance
+	 * Start this task instance.
 	 * @param task Task instance
 	 * @returns Promise that will be resolved when task is started
 	 * @example
@@ -241,7 +254,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	}
 
 	/**
-	 * Wait for this task to be resolved/rejected (also start task if not started yet)
+	 * Wait for this task to be resolved/rejected (also starts task if not started yet)
 	 * @param task Task instance
 	 * @returns ReturnType of task (resolved value or rejected error)
 	 */
@@ -267,7 +280,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		this.assertInstance(instance, task.uuid);
 		// check if we can restart this task
 		await instance.task.allowRestart();
-		!instance.promise.isDone && instance.promise.reject(new Error('Task restart')); // trow error to reject old promise if someone is waiting for it
+		!instance.promise.isDone && instance.promise.reject(new Error('Task restart')); // throw error to reject old promise if someone is waiting for it
 		// check if task is already running just before reset and start
 		if (isRunningState(instance.task.status)) {
 			throw new Error(`Task ${instance.task.uuid} ${instance.type} is already running`);
