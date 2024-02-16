@@ -5,6 +5,7 @@ import {TaskTrigger} from '../types/TaskTrigger';
 
 export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskProps, ReturnType, CommonTaskContext>
 	extends TaskParams<TaskProps, CommonTaskContext> {
+	/** limit only one instance of this task type */
 	readonly singleInstance: boolean;
 	readonly type: TaskType;
 	readonly trigger: TaskTrigger;

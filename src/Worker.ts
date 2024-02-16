@@ -8,9 +8,9 @@ import {FatalTaskError} from './lib/FatalTaskError';
 import {TaskDisabledError} from './lib/TaskDisabledError';
 import {InferDataFromInstance} from './types/TaskData';
 import {TTaskProps} from './types/TaskProps';
-import {TaskStatusType, getTaskName, isRunningState, isStartState} from './types/TaskStatus';
+import {TaskStatusType, getTaskStatusString, isRunningState, isStartState} from './types/TaskStatus';
 
-const defaultLogMap = {
+export const defaultLogMap = {
 	abort: LogLevel.Info,
 	delete: LogLevel.Error,
 	flow_error: LogLevel.None,
@@ -33,7 +33,7 @@ export type HandleTaskUpdateCallback<TI extends ITaskInstance<string, TTaskProps
 	taskInstance: FullTaskInstance<unknown, TI>,
 ) => Promise<void>;
 
-type FullTaskInstance<ReturnType, TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = ITaskInstance<
+export type FullTaskInstance<ReturnType, TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = ITaskInstance<
 	TI['type'],
 	TI['props'],
 	ReturnType,
@@ -51,7 +51,7 @@ export type WorkerOptions = {
 	logger?: ILoggerLike;
 };
 
-interface TaskWorkerInstance<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> {
+export interface TaskWorkerInstance<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> {
 	abortController: AbortController;
 	type: TI['type'];
 	task: TI;
@@ -581,7 +581,9 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 
 	private setTaskStatus(workerInstance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>, status: TaskStatusType): Promise<void> {
 		const statusInfo =
-			workerInstance.task.status === status ? `to ${getTaskName(status)}` : `from ${getTaskName(workerInstance.task.status)} to ${getTaskName(status)}`;
+			workerInstance.task.status === status
+				? `to ${getTaskStatusString(status)}`
+				: `from ${getTaskStatusString(workerInstance.task.status)} to ${getTaskStatusString(status)}`;
 		const message = `Task ${workerInstance.task.uuid} ${workerInstance.type} status changed ${statusInfo}`;
 		switch (status) {
 			case TaskStatusType.Rejected:
