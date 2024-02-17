@@ -4,7 +4,7 @@ import * as Cron from 'cron';
 import {ITaskConstructorInferFromInstance, ITaskInstance} from './interfaces/ITask';
 import {DeferredPromise} from './lib/DeferredPromise';
 import {haveError} from './lib/errorUtil';
-import {FatalTaskError} from './lib/FatalTaskError';
+import {FatalTaskError, buildFatalError} from './lib/FatalTaskError';
 import {TaskDisabledError} from './lib/TaskDisabledError';
 import {InferDataFromInstance} from './types/TaskData';
 import {TTaskProps} from './types/TaskProps';
@@ -453,11 +453,11 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 					break;
 				default:
 					// istanbul ignore next
-					throw new Error(`Task ${instance.task.uuid} is not triggerable`);
+					throw new FatalTaskError(`Task ${instance.task.uuid} is not triggerable with trigger: ${JSON.stringify(instance.task.trigger)}`);
 			}
 		} catch (err) {
 			// istanbul ignore next
-			await this.handleReject(instance, haveError(err));
+			await this.handleReject(instance, buildFatalError(err));
 		}
 	}
 

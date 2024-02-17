@@ -53,3 +53,4 @@ const data = await worker.waitTask(task);
 ### TODO
 
 - remove promises other than instant task trigger
+- remove custom callback setup and use Event Emitter instead

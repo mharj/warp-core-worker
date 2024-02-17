@@ -34,9 +34,9 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 		this.data = data;
 		this.status = params.status;
 		this.disabled = params.disabled;
-		this.errors = params?.errors ?? [];
-		this.runCount = params?.runCount ?? 0;
-		this.errorCount = params?.errorCount ?? 0;
+		this.errors = params.errors;
+		this.runCount = params.runCount;
+		this.errorCount = params.errorCount;
 		this.start = params?.start ?? undefined;
 		this.end = params?.end ?? undefined;
 		this.commonContext = params.commonContext;
