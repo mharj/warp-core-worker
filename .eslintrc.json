@@ -34,10 +34,14 @@
 				"minKeys": 4
 			}
 		],
+		"quotes": ["error", "single", {"avoidEscape": true}],
+		"no-void": "off",
 		"no-unused-vars": "off",
 		"no-use-before-define": "off",
+		"@typescript-eslint/no-invalid-void-type": "error",
 		"@typescript-eslint/no-use-before-define": ["error"],
 		"@typescript-eslint/no-explicit-any": ["warn"],
+		"@typescript-eslint/explicit-function-return-type": ["error", {"allowHigherOrderFunctions": true}],
 		"@typescript-eslint/no-unused-vars": [
 			"warn", // or "error"
 			{

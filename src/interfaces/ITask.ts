@@ -7,7 +7,9 @@ export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskP
 	extends TaskParams<TaskProps, CommonTaskContext> {
 	/** limit only one instance of this task type */
 	readonly singleInstance: boolean;
+	/** task type string */
 	readonly type: TaskType;
+	/** task trigger type */
 	readonly trigger: TaskTrigger;
 	abortSignal: AbortSignal;
 	/** task data after runTask */
@@ -17,20 +19,22 @@ export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskP
 	/**
 	 * @return Promise that resolves or rejects if task is allowed to restart
 	 */
-	allowRestart(): Promise<void>;
-	getDescription(): Promise<string>;
-	runTask(): Promise<ReturnType>;
+	allowRestart(): boolean | Promise<boolean>;
+	/** Builds description of the task */
+	getDescription(): string | Promise<string>;
+	/** run task action */
+	runTask(): Promise<ReturnType> | ReturnType;
 	/**
 	 * @returns value how long to sleep before retrying
 	 */
-	onErrorSleep(): Promise<number>;
+	onErrorSleep(): Promise<number> | number;
 	/**
 	 * @returns true if the task should be retried on failure
 	 */
-	retry(): Promise<boolean>;
-	onInit(): Promise<void>;
-	onResolved(): Promise<void>;
-	onRejected(): Promise<void>;
+	retry(): Promise<boolean> | boolean;
+	onInit(): Promise<void> | void;
+	onResolved(): Promise<void> | void;
+	onRejected(): Promise<void> | void;
 	/**
 	 * Called before the task is running.
 	 * how to use:
@@ -38,7 +42,7 @@ export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskP
 	 * - validate current props
 	 * @returns true if the task should be started
 	 */
-	onPreStart(): Promise<boolean>;
+	onPreStart(): Promise<boolean> | boolean;
 }
 
 export type ITaskConstructor<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = new (

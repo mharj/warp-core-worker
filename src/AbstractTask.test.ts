@@ -13,12 +13,12 @@ const expect = chai.expect;
 class TestTask extends AbstractSimpleTask<'test', TTaskProps, void, {owner: string}> {
 	public readonly type = 'test';
 	public trigger: TaskTrigger = {type: 'instant'};
-	public async runTask(): Promise<void> {
-		return Promise.resolve();
+	public runTask(): void {
+		// do nothing
 	}
 
-	protected buildDescription(): Promise<string> {
-		return Promise.resolve(`${this.type} task`);
+	protected buildDescription(): string {
+		return `${this.type} task`;
 	}
 }
 
@@ -42,12 +42,12 @@ const taskInstance = new TestTask(
 
 describe('Test', function () {
 	it('should check default implementations', async function () {
-		await expect(taskInstance.onInit()).to.eventually.be.undefined;
-		await expect(taskInstance.onPreStart()).to.eventually.be.true;
-		await expect(taskInstance.onRejected()).to.eventually.be.undefined;
-		await expect(taskInstance.onResolved()).to.eventually.be.undefined;
-		await expect(taskInstance.onErrorSleep()).to.eventually.be.equal(0);
-		await expect(taskInstance.retry()).to.eventually.be.false;
-		await expect(taskInstance.allowRestart()).to.be.rejectedWith(`Task ${taskInstance.uuid} ${taskInstance.type} is not allowed to restart`);
+		expect(await taskInstance.onInit()).to.be.undefined;
+		expect(await taskInstance.onPreStart()).to.be.true;
+		expect(await taskInstance.onRejected()).to.be.undefined;
+		expect(await taskInstance.onResolved()).to.be.undefined;
+		expect(await taskInstance.onErrorSleep()).to.be.equal(0);
+		expect(await taskInstance.retry()).to.be.false;
+		expect(await taskInstance.allowRestart()).to.be.false;
 	});
 });

@@ -27,7 +27,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	protected logger?: ILoggerLike;
 	public data: ReturnType | undefined;
 	public taskError: Error | undefined;
-	private description?: string;
+	private description?: string | Promise<string>;
 	constructor(params: TaskParams<TaskProps, CommonTaskContext>, data: ReturnType | undefined, abortSignal: AbortSignal, logger: ILoggerLike | undefined) {
 		this.uuid = params.uuid;
 		this.props = params.props;
@@ -44,58 +44,56 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 		this.logger = logger;
 	}
 
-	protected abstract buildDescription(): Promise<string>;
+	protected abstract buildDescription(): Promise<string> | string;
 
-	public async getDescription(): Promise<string> {
+	public getDescription(): string | Promise<string> {
 		if (!this.description) {
-			this.description = await this.buildDescription();
+			this.description = this.buildDescription();
 		}
 		return this.description;
 	}
 
-	public abstract runTask(): Promise<ReturnType>;
+	public abstract runTask(): Promise<ReturnType> | ReturnType;
 
 	/**
-	 * Check if the task instance is allowed to restart
-	 * @returns {Promise<void>}
+	 * Check if the task instance is allowed to restart, default is false
+	 * @returns {boolean | Promise<boolean>} true if the task can be restarted, false otherwise
 	 * @example
-	 * public allowRestart(): Promise<void> {
-	 * 	 return this.status === TaskStatusType.REJECTED ? Promise.resolve() : Promise.reject(new Error(`Task ${this.uuid} ${this.type} is not allowed to restart`));
+	 * public allowRestart(): boolean {
+	 * 	 return this.status === TaskStatusType.REJECTED;
 	 * }
 	 */
-	public allowRestart(): Promise<void> {
-		return Promise.reject(new Error(`Task ${this.uuid} ${this.type} is not allowed to restart`));
+	public allowRestart(): Promise<boolean> | boolean {
+		return false;
 	}
 
 	/**
-	 * Check if the task is allowed to be retried on error
+	 * Check if the task is allowed to be retried on error, default is false
 	 * @returns {Promise<boolean>} true if the task should be retried, false otherwise
 	 * @example
 	 * public retry(): Promise<boolean> {
 	 * 	 return Promise.resolve(this.errorCount < 4);
 	 * }
 	 */
-	public retry(): Promise<boolean> {
-		return Promise.resolve(false);
+	public retry(): Promise<boolean> | boolean {
+		return false;
 	}
 
-	public onErrorSleep(): Promise<number> {
-		return Promise.resolve(0);
+	/**
+	 * Sleep time before retrying the task, default is 0
+	 * @returns {Promise<number> | number} time in milliseconds to sleep before retrying
+	 */
+	public onErrorSleep(): Promise<number> | number {
+		return 0;
 	}
 
-	public onInit(): Promise<void> {
-		return Promise.resolve();
+	public onInit(): Promise<void> | void {}
+
+	public onPreStart(): Promise<boolean> | boolean {
+		return true;
 	}
 
-	public onPreStart(): Promise<boolean> {
-		return Promise.resolve(true);
-	}
+	public onRejected(): Promise<void> | void {}
 
-	public onRejected(): Promise<void> {
-		return Promise.resolve();
-	}
-
-	public onResolved(): Promise<void> {
-		return Promise.resolve();
-	}
+	public onResolved(): Promise<void> | void {}
 }

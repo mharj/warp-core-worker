@@ -1,58 +1,103 @@
+/* eslint-disable import/namespace */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-unused-expressions */
 /* eslint-disable sonarjs/no-duplicate-string */
 /* eslint-disable sonarjs/no-identical-functions */
+import {ILoggerLike, LogLevel} from '@avanio/logger-like';
 import {sleep} from '@avanio/sleep';
 import * as chai from 'chai';
-import 'mocha';
 import * as chaiAsPromised from 'chai-as-promised';
+import * as sinon from 'sinon';
+import 'mocha';
 import {v4 as uuid} from 'uuid';
-import {AbstractSimpleTask, ImportObjectMap, Worker, TaskTrigger, TaskStatusType, FatalTaskError, HandleTaskUpdateCallback} from './';
+import {
+	AbstractSimpleTask,
+	ImportObjectMap,
+	Worker,
+	TaskTrigger,
+	TaskStatusType,
+	FatalTaskError,
+	HandleTaskUpdateCallback,
+	TaskWorkerLogMapping,
+	buildTaskLog,
+	getTaskStatusString,
+	FullTaskInstance,
+} from './';
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
 
+const logMapper: TaskWorkerLogMapping = {
+	abort: LogLevel.Debug,
+	delete: LogLevel.Debug,
+	flow_abort: LogLevel.Debug,
+	flow_error: LogLevel.Debug,
+	flow_limit: LogLevel.Debug,
+	flow_retry: LogLevel.Debug,
+	flow_sleep: LogLevel.Debug,
+	not_start: LogLevel.Debug,
+	rejected: LogLevel.Debug,
+	resolved: LogLevel.Debug,
+	start: LogLevel.Debug,
+	status_change_default: LogLevel.Debug,
+	status_change_error: LogLevel.Debug,
+	status_change_info: LogLevel.Debug,
+};
+
+const spyLogger = {
+	debug: sinon.spy(),
+	error: sinon.spy(),
+	info: sinon.spy(),
+	warn: sinon.spy(),
+} satisfies ILoggerLike;
+
 class Test1 extends AbstractSimpleTask<'test1', {test: string; onInit?: true; onResolved?: true; onRejected?: true; onPreStart?: true}, string, unknown> {
 	public readonly type = 'test1';
 	public trigger: TaskTrigger = {type: 'instant'};
-	public async runTask(): Promise<string> {
+	public runTask(): string {
 		if (this.props.test === 'throw') {
 			throw new Error('test');
 		}
 		return 'test1';
 	}
 
-	public allowRestart(): Promise<void> {
-		return Promise.resolve();
+	public allowRestart(): boolean {
+		return true;
 	}
 
-	protected buildDescription(): Promise<string> {
-		return Promise.resolve(`${this.type} task`);
+	protected buildDescription(): string {
+		if (this.props.test === 'description-throw') {
+			throw new Error('description-throw');
+		}
+		return `${this.type} task`;
 	}
 
-	public async onInit(): Promise<void> {
+	public onInit(): void {
 		this.props.onInit = true;
 	}
 
-	public async onPreStart(): Promise<boolean> {
+	public onPreStart(): boolean {
+		if (this.props.test === 'pre-start-false') {
+			return false;
+		}
 		this.props.onPreStart = true;
 		return true;
 	}
 
-	public async onResolved(): Promise<void> {
+	public onResolved(): void {
 		this.props.onResolved = true;
 	}
 
-	public async onRejected(): Promise<void> {
+	public onRejected(): void {
 		this.props.onRejected = true;
 	}
 
-	public retry(): Promise<boolean> {
-		return Promise.resolve(this.runCount < 4);
+	public retry(): boolean {
+		return this.runCount < 4;
 	}
 
-	public onErrorSleep(): Promise<number> {
-		return Promise.resolve(this.runCount * 100);
+	public onErrorSleep(): number {
+		return this.runCount * 100;
 	}
 }
 
@@ -60,20 +105,25 @@ class Test2 extends AbstractSimpleTask<'test2', {test: string}, string, unknown>
 	public readonly type = 'test2';
 	public trigger: TaskTrigger = {type: 'interval', interval: 200};
 	public readonly singleInstance = true;
-	public async runTask(): Promise<string> {
+
+	public onPreStart(): boolean {
+		return this.runCount < 4;
+	}
+
+	public runTask(): string {
 		return 'test2';
 	}
 
-	protected buildDescription(): Promise<string> {
-		return Promise.resolve(`${this.type} task`);
+	protected buildDescription(): string {
+		return `${this.type} task`;
 	}
 
-	public retry(): Promise<boolean> {
-		return Promise.resolve(this.runCount < 4);
+	public retry(): boolean {
+		return true;
 	}
 
-	public onErrorSleep(): Promise<number> {
-		return Promise.resolve(this.runCount * 100);
+	public onErrorSleep(): number {
+		return this.runCount * 100;
 	}
 }
 
@@ -81,20 +131,20 @@ class Test3 extends AbstractSimpleTask<'test3', {test: string}, string, unknown>
 	public readonly type = 'test3';
 	public trigger: TaskTrigger = {type: 'cron', cron: '* * * * * *'};
 	public readonly singleInstance = true;
-	public async runTask(): Promise<string> {
+	public runTask(): string {
 		return 'test3';
 	}
 
-	protected buildDescription(): Promise<string> {
-		return Promise.resolve(`${this.type} task`);
+	protected buildDescription(): string {
+		return `${this.type} task`;
 	}
 
-	public retry(): Promise<boolean> {
-		return Promise.resolve(this.runCount < 4);
+	public retry(): boolean {
+		return this.runCount < 4;
 	}
 
-	public onErrorSleep(): Promise<number> {
-		return Promise.resolve(this.runCount * 100);
+	public onErrorSleep(): number {
+		return this.runCount * 100;
 	}
 }
 
@@ -109,25 +159,33 @@ let currentCallback: HandleTaskUpdateCallback<Test1 | Test2 | Test3>;
 
 describe('Worker', () => {
 	beforeEach(function () {
-		worker = new Worker({
-			taskUniqueIdBuilder: uuid,
-			//	logger: console,
-		});
+		worker = new Worker(
+			{
+				taskUniqueIdBuilder: uuid,
+				//	logger: console,
+			},
+			logMapper,
+		);
+		worker.addLogger(spyLogger);
 		currentCallback = worker.onTaskUpdate(async (_data, _task) => {
 			// console.log('task update', _data.status, await task.getDescription());
 		});
+		spyLogger.debug.resetHistory();
+		spyLogger.error.resetHistory();
+		spyLogger.info.resetHistory();
+		spyLogger.warn.resetHistory();
 	});
 	it('should initialize a task', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
 		await worker.startTask(task);
 		const data = await worker.waitTask(task);
-		await expect(worker.startTask(task)).to.eventually.be.rejectedWith(Error, `Task ${task.uuid} ${task.type} is already started`);
+		await expect(worker.startTask(task)).to.eventually.be.rejectedWith(Error, buildTaskLog(task, 'is already started'));
 		expect(data).to.be.eq('test1');
 		expect(task.props.onInit).to.be.eq(true);
 		expect(task.props.onPreStart).to.be.eq(true);
 		expect(task.props.onRejected).to.be.eq(undefined);
 		expect(task.props.onResolved).to.be.eq(true);
-		await expect(task.getDescription()).to.be.eventually.eq('test1 task');
+		expect(await task.getDescription()).to.be.eq('test1 task');
 		expect(task.start).to.be.instanceOf(Date);
 		expect(task.end).to.be.instanceOf(Date);
 		expect(task.data).to.be.eq('test1');
@@ -136,6 +194,58 @@ describe('Worker', () => {
 		await worker.waitTask(task);
 		const getTasks = worker.getTasksByType('test1');
 		expect(getTasks?.[0]).to.be.eq(task);
+		expect(worker.getTaskCount()).to.be.eq(1);
+		// hack to test running task blocking
+		task.status = TaskStatusType.Running;
+		await expect(worker.restartTask(task)).to.be.eventually.rejectedWith(Error, buildTaskLog(task, 'is already running'));
+	});
+	describe('restart', function () {
+		let task: FullTaskInstance<string | undefined, Test1>;
+		beforeEach(async function () {
+			task = await worker.initializeTask(Test1, {test: 'test'}, {});
+		});
+		it('should prevent task to be restarted', async function () {
+			for (const currentStatus of [TaskStatusType.Starting, TaskStatusType.Running]) {
+				task.status = currentStatus;
+				await expect(worker.restartTask(task), `${getTaskStatusString(task.status)} status should not be restartable`).to.be.eventually.rejectedWith(
+					Error,
+					buildTaskLog(task, 'is already running'),
+				);
+			}
+		});
+		afterEach(async function () {
+			await worker.deleteTask(task);
+		});
+	});
+	describe('stop and delete', function () {
+		it('should abort initialize task', async function () {
+			const task = await worker.initializeTask(Test1, {test: 'test'}, {});
+			await worker.stopTask(task);
+			await worker.deleteTask(task);
+			expect(worker.getTaskCount()).to.be.eq(0);
+		});
+		it('should abort started task', async function () {
+			const task = await worker.initializeTask(Test1, {test: 'test'}, {});
+			await worker.startTask(task);
+			await worker.stopTask(task);
+			await worker.deleteTask(task);
+			expect(worker.getTaskCount()).to.be.eq(0);
+		});
+		it('should abort resolved task', async function () {
+			const task = await worker.initializeTask(Test1, {test: 'test'}, {});
+			await worker.waitTask(task);
+			await worker.stopTask(task);
+			await worker.deleteTask(task);
+			expect(worker.getTaskCount()).to.be.eq(0);
+		});
+	});
+	it('restartTask old promises reject', async function () {
+		const restartTask = await worker.initializeTask(Test1, {test: 'test'}, {});
+		restartTask.status = TaskStatusType.Pending;
+		const oldPromise = worker.waitTask(restartTask); // before restart promise (restart throws error to all old waiting promises)
+		await worker.restartTask(restartTask);
+		await expect(oldPromise).to.be.eventually.rejectedWith(Error, buildTaskLog(restartTask, 'restarting'));
+		await expect(worker.waitTask(restartTask)).to.be.eventually.eq('test1');
 	});
 	it('should get current task with getOrInitializeTask and hook to promise (init)', async function () {
 		// initial data
@@ -145,6 +255,31 @@ describe('Worker', () => {
 		expect(task.uuid).to.be.eq(oldTask.uuid);
 		const data = await worker.waitTask(task);
 		expect(data).to.be.eq('test1');
+		expect(worker.getTaskCount()).to.be.eq(1);
+		await expect(worker.getOrInitializeTask(oldTask.uuid, 'test2', Test2, {test: 'test'}, {})).to.be.eventually.rejectedWith(
+			Error,
+			buildTaskLog(task, 'type mismatch, expected type test2'),
+		);
+	});
+	it('should fail to pre-start a task', async function () {
+		worker.setLogMapping({
+			abort: LogLevel.None,
+			delete: LogLevel.None,
+			flow_error: LogLevel.None,
+			flow_limit: LogLevel.None,
+			flow_retry: LogLevel.None,
+			flow_sleep: LogLevel.None,
+			rejected: LogLevel.None,
+			resolved: LogLevel.None,
+			start: LogLevel.None,
+			status_change_default: LogLevel.None,
+			status_change_error: LogLevel.None,
+			status_change_info: LogLevel.None,
+		});
+		const task = await worker.initializeTask(Test1, {test: 'pre-start-false'}, {});
+		await worker.waitTask(task);
+		expect(task.props.onPreStart).to.be.eq(undefined);
+		expect(spyLogger.debug.args[0][0]).to.be.eq(buildTaskLog(task, 'onPreStart is false, not started'));
 	});
 	it('should get current task with getOrInitializeTask and hook to promise (running)', async function () {
 		// initial data
@@ -155,31 +290,34 @@ describe('Worker', () => {
 		expect(task.uuid).to.be.eq(oldTask.uuid);
 		const data = await worker.waitTask(task);
 		expect(data).to.be.eq('test1');
+		expect(worker.getTaskCount()).to.be.eq(1);
 	});
 	it('should get current task with getOrInitializeTask and hook to promise (resolved)', async function () {
 		// initial data
-		const oldTask = await worker.initializeTask(Test1, {test: 'test'}, {});
+		const oldTask = await worker.getOrInitializeTask(undefined, 'test1', Test1, {test: 'test'}, {});
 		await worker.waitTask(oldTask);
 		// test
 		const task = await worker.getOrInitializeTask(oldTask.uuid, 'test1', Test1, {test: 'test'}, {});
 		expect(task.uuid).to.be.eq(oldTask.uuid);
 		const data = await worker.waitTask(task);
 		expect(data).to.be.eq('test1');
+		expect(worker.getTaskCount()).to.be.eq(1);
 	});
 	it('should initialize a task without start', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
 		const data = await worker.waitTask(task);
-		await expect(worker.startTask(task)).to.eventually.be.rejectedWith(Error, `Task ${task.uuid} ${task.type} is already started`);
+		await expect(worker.startTask(task)).to.eventually.be.rejectedWith(Error, buildTaskLog(task, 'is already started'));
 		expect(data).to.be.eq('test1');
 		expect(task.props.onInit).to.be.eq(true);
 		expect(task.props.onPreStart).to.be.eq(true);
 		expect(task.props.onRejected).to.be.eq(undefined);
 		expect(task.props.onResolved).to.be.eq(true);
-		await expect(task.getDescription()).to.be.eventually.eq('test1 task');
+		expect(await task.getDescription()).to.be.eq('test1 task');
 		expect(task.start).to.be.instanceOf(Date);
 		expect(task.end).to.be.instanceOf(Date);
 		expect(task.data).to.be.eq('test1');
 		expect(task.taskError).to.be.undefined;
+		expect(worker.getTaskCount()).to.be.eq(1);
 	});
 	it('should initialize a task, start and stop', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
@@ -187,12 +325,13 @@ describe('Worker', () => {
 		const waitPromise = worker.waitTask(task);
 		await expect(worker.stopTask(task)).to.eventually.be.undefined;
 		await expect(waitPromise).to.eventually.be.rejectedWith(Error, `Task ${task.uuid} ${task.type} aborted`);
+		expect(worker.getTaskCount()).to.be.eq(1);
 	});
 	it('should fail to run broken task', async function () {
 		this.slow(1400); // ~620ms
 		const task = await worker.initializeTask(Test1, {test: 'throw'}, {});
 		await worker.startTask(task);
-		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(Error, `Task ${task.uuid} ${task.type} retry limit reached`);
+		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(Error, 'retry limit reached');
 		expect(task.errors).to.have.lengthOf(5);
 		expect(task.runCount).to.be.eq(4);
 		expect(task.props.onInit).to.be.eq(true);
@@ -203,6 +342,7 @@ describe('Worker', () => {
 		expect(task.end).to.be.instanceOf(Date);
 		expect(task.data).to.be.undefined;
 		expect(task.taskError).to.be.instanceOf(Error);
+		expect(worker.getTaskCount()).to.be.eq(1);
 	});
 	it('should fail on disabled task', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
@@ -215,17 +355,21 @@ describe('Worker', () => {
 		expect(task.props.onPreStart).to.be.eq(undefined);
 		expect(task.props.onRejected).to.be.eq(true);
 		expect(task.props.onResolved).to.be.eq(undefined);
+		expect(worker.getTaskCount()).to.be.eq(1);
 	});
 	it('should initialize interval task', async function () {
 		this.slow(1000); // ~460ms
 		const task = await worker.initializeTask(Test2, {test: 'test'}, {});
 		await worker.startTask(task);
+		expect(worker.getTaskCount()).to.be.eq(1);
 		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(Error, `Task ${task.uuid} ${task.type} is not instant and cannot be waited`);
-		await sleep(450);
+		await sleep(550);
+		expect(task.errorCount).to.be.eq(0); // no errors
 		expect(task.runCount).to.be.eq(3); // interval task runs also at start
 		await expect(worker.restartTask(task)).to.be.eventually.rejectedWith(Error, `Task ${task.uuid} ${task.type} is not allowed to restart`);
 		await worker.deleteTask(task);
-		await expect(task.getDescription()).to.be.eventually.eq('test2 task');
+		expect(await task.getDescription()).to.be.eq('test2 task');
+		expect(worker.getTaskCount()).to.be.eq(0);
 	});
 	it('should initialize cron task', async function () {
 		this.timeout(5000);
@@ -233,10 +377,12 @@ describe('Worker', () => {
 		let task = await worker.initializeTask(Test3, {test: 'test'}, {});
 		task = await worker.initializeTask(Test3, {test: 'test'}, {});
 		await worker.startTask(task);
+		expect(worker.getTaskCount()).to.be.eq(1);
 		await sleep(2500);
 		expect(task.runCount).to.be.greaterThanOrEqual(2);
 		await worker.deleteTask(task);
-		await expect(task.getDescription()).to.be.eventually.eq('test3 task');
+		expect(await task.getDescription()).to.be.eq('test3 task');
+		expect(worker.getTaskCount()).to.be.eq(0);
 	});
 
 	it('should import task', async function () {
@@ -323,6 +469,7 @@ describe('Worker', () => {
 			],
 			importMapping,
 		);
+		expect(worker.getTaskCount()).to.be.eq(4); // 5 raw tasks, type test2 is single instance so only 1 is imported
 		const task1 = worker.getTaskByUuid(taskUuid1);
 		if (!task1) {
 			throw new Error('Task not found');
@@ -342,7 +489,11 @@ describe('Worker', () => {
 		const data2 = await worker.waitTask(task2);
 		expect(data2).to.be.eq('test1');
 
-		await expect(worker.waitTask(task3)).to.be.eventually.rejectedWith(Error, 'test');
+		await expect(worker.waitTask(task3)).to.be.eventually.rejectedWith(FatalTaskError, 'test');
+	});
+	it('should fail task if cant build task description', async function () {
+		const task = await worker.initializeTask(Test1, {test: 'description-throw'}, {});
+		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(FatalTaskError, 'description-throw');
 	});
 	afterEach(function () {
 		worker.removeTaskUpdate(currentCallback);

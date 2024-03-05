@@ -7,7 +7,7 @@ export class DeferredPromise<ResolveType = unknown, RejectType = unknown> extend
 	private initialCallStack: Error['stack'];
 	private constructorStackString: string;
 
-	constructor(executor: ConstructorParameters<typeof Promise<ResolveType>>[0] = () => {}) {
+	constructor(executor: ConstructorParameters<typeof Promise<ResolveType>>[0] = (): void => {}) {
 		let resolver: (value: ResolveType | PromiseLike<ResolveType>) => void;
 		let rejector: (reason?: unknown) => void;
 
@@ -38,7 +38,7 @@ export class DeferredPromise<ResolveType = unknown, RejectType = unknown> extend
 	/**
 	 * Resolve the promise with a value.
 	 */
-	public resolve(resolveValue: ResolveType | PromiseLike<ResolveType>) {
+	public resolve(resolveValue: ResolveType | PromiseLike<ResolveType>): void {
 		if (this._isDone) {
 			throw new Error('Promise already resolved');
 		}
@@ -49,7 +49,7 @@ export class DeferredPromise<ResolveType = unknown, RejectType = unknown> extend
 	/**
 	 * Reject the promise with a value.
 	 */
-	public reject(rejectValue: RejectType) {
+	public reject(rejectValue: RejectType): void {
 		if (this._isDone) {
 			throw new Error('Promise already resolved');
 		}
