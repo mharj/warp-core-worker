@@ -1,6 +1,8 @@
+import * as EventEmitter from 'events';
 import {ILoggerLike, LogLevel, LogMapping, MapLogger} from '@avanio/logger-like';
 import {sleep} from '@avanio/sleep';
 import * as Cron from 'cron';
+import TypedEmitter from 'typed-emitter';
 import type {ITaskConstructorInferFromInstance, ITaskInstance} from './interfaces/ITask';
 import {AbortTaskError} from './lib/AbortTaskError';
 import {DeferredPromise} from './lib/DeferredPromise';
@@ -11,6 +13,13 @@ import {type TaskLogFunction, buildTaskLog} from './lib/taskLog';
 import type {InferDataFromInstance} from './types/TaskData';
 import type {TTaskProps} from './types/TaskProps';
 import {TaskStatusType, getTaskStatusString, isEndState, isRunningState, isStartState} from './types/TaskStatus';
+
+type WorkerEvents<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = {
+	import: () => void;
+	addTask: (task: TI) => void;
+	updateTask: (task: TI) => void;
+	deleteTask: (task: TI) => void;
+};
 
 export const defaultLogMap = {
 	abort: LogLevel.Info,
@@ -30,11 +39,6 @@ export const defaultLogMap = {
 };
 
 export type TaskWorkerLogMapping = LogMapping<keyof typeof defaultLogMap>; // build type
-
-export type HandleTaskUpdateCallback<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = (
-	taskData: InferDataFromInstance<TI>,
-	taskInstance: FullTaskInstance<unknown, TI>,
-) => Promise<void>;
 
 export type FullTaskInstance<ReturnType, TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = ITaskInstance<
 	TI['type'],
@@ -65,28 +69,22 @@ export interface TaskWorkerInstance<TI extends ITaskInstance<string, TTaskProps,
 	intervalRef?: ReturnType<typeof setInterval>;
 }
 
-export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>> {
+export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>> extends (EventEmitter as {
+	new <T>(): TypedEmitter<WorkerEvents<ITaskInstance<string, TTaskProps, unknown, T>>>;
+})<CommonTaskContext> {
 	private buildTaskUniqueId: () => string;
 	private tasks = new Map<string, TaskWorkerInstance<FullTaskInstance<unknown, TI>>>();
 	private logger: MapLogger<TaskWorkerLogMapping>;
 	private buildLog: TaskLogFunction;
 
-	private handleTaskUpdates = new Set<HandleTaskUpdateCallback<TI>>();
 	private stepFlowDelay: number;
+
 	constructor(opts: WorkerOptions, logMapping?: Partial<TaskWorkerLogMapping>) {
+		super();
 		this.buildTaskUniqueId = opts.taskUniqueIdBuilder;
 		this.stepFlowDelay = opts.stepFlowDelay || 0;
 		this.buildLog = opts.logFunction || buildTaskLog;
 		this.logger = new MapLogger(opts.logger, Object.assign({}, defaultLogMap, logMapping));
-	}
-
-	public onTaskUpdate(taskUpdateCallback: HandleTaskUpdateCallback<TI>): HandleTaskUpdateCallback<TI> {
-		this.handleTaskUpdates.add(taskUpdateCallback);
-		return taskUpdateCallback;
-	}
-
-	public removeTaskUpdate(taskUpdateCallback: HandleTaskUpdateCallback<TI>): void {
-		this.handleTaskUpdates.delete(taskUpdateCallback);
 	}
 
 	/**
@@ -159,6 +157,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		void this.handlePreBuildDescription(classInstance, currentWorkerInstance);
 		await this.setTaskStatus(currentWorkerInstance, classInstance.status); // change status to created
 		this.tasks.set(classInstance.uuid, currentWorkerInstance); // store task
+		this.emit('addTask', classInstance);
 		return classInstance;
 	}
 
@@ -361,6 +360,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		}
 		this.logKey('delete', instance, 'deleted');
 		this.tasks.delete(task.uuid);
+		this.emit('deleteTask', instance.task);
 	}
 
 	/**
@@ -387,6 +387,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 					await this.handleTriggerConnection(currentWorkerInstance, true);
 				}
 			}
+			this.emit('import');
 		} catch (err) {
 			// istanbul ignore next
 			this.logger.error(`Task import error: ${haveError(err)}`);
@@ -693,8 +694,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	}
 
 	private async notifyTaskUpdate(workerInstance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
-		const data = this.buildTaskAsTaskData(workerInstance.task);
-		await Promise.all(Array.from(this.handleTaskUpdates).map((cb) => cb(data, workerInstance.task)));
+		this.emit('updateTask', workerInstance.task);
 	}
 
 	/**
@@ -716,24 +716,5 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		} catch (err) {
 			await this.handleReject(currentWorkerInstance, buildFatalError(err));
 		}
-	}
-
-	private buildTaskAsTaskData(task: FullTaskInstance<unknown, TI>): InferDataFromInstance<TI> {
-		const {type, uuid, commonContext, props, status, disabled, errors, runCount, start, end, data, taskError, errorCount} = task;
-		return {
-			commonContext,
-			data,
-			disabled,
-			end,
-			errorCount,
-			errors,
-			props,
-			runCount,
-			start,
-			status,
-			taskError,
-			type,
-			uuid,
-		};
 	}
 }

@@ -17,7 +17,6 @@ import {
 	TaskTrigger,
 	TaskStatusType,
 	FatalTaskError,
-	HandleTaskUpdateCallback,
 	TaskWorkerLogMapping,
 	buildTaskLog,
 	getTaskStatusString,
@@ -155,7 +154,6 @@ const importMapping: ImportObjectMap<Test1 | Test2 | Test3> = {
 };
 
 let worker: Worker<unknown, Test1 | Test2 | Test3>;
-let currentCallback: HandleTaskUpdateCallback<Test1 | Test2 | Test3>;
 
 describe('Worker', () => {
 	beforeEach(function () {
@@ -167,8 +165,14 @@ describe('Worker', () => {
 			logMapper,
 		);
 		worker.addLogger(spyLogger);
-		currentCallback = worker.onTaskUpdate(async (_data, _task) => {
-			// console.log('task update', _data.status, await task.getDescription());
+		worker.on('addTask', async (_task) => {
+			// console.log('task add', await _task.getDescription());
+		});
+		worker.on('updateTask', async (_task) => {
+			// console.log('task update', await _task.getDescription());
+		});
+		worker.on('deleteTask', async (_task) => {
+			// console.log('task delete', await _task.getDescription());
 		});
 		spyLogger.debug.resetHistory();
 		spyLogger.error.resetHistory();
@@ -494,8 +498,5 @@ describe('Worker', () => {
 	it('should fail task if cant build task description', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'description-throw'}, {});
 		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(FatalTaskError, 'description-throw');
-	});
-	afterEach(function () {
-		worker.removeTaskUpdate(currentCallback);
 	});
 });
