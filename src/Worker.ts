@@ -70,8 +70,8 @@ export interface TaskWorkerInstance<TI extends ITaskInstance<string, TTaskProps,
 }
 
 export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>> extends (EventEmitter as {
-	new <T>(): TypedEmitter<WorkerEvents<ITaskInstance<string, TTaskProps, unknown, T>>>;
-})<CommonTaskContext> {
+	new <CommonTaskContext, TI extends ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>>(): TypedEmitter<WorkerEvents<TI>>;
+})<CommonTaskContext, TI> {
 	private buildTaskUniqueId: () => string;
 	private tasks = new Map<string, TaskWorkerInstance<FullTaskInstance<unknown, TI>>>();
 	private logger: MapLogger<TaskWorkerLogMapping>;
@@ -360,7 +360,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		}
 		this.logKey('delete', instance, 'deleted');
 		this.tasks.delete(task.uuid);
-		this.emit('deleteTask', instance.task);
+		this.emit('deleteTask', instance.task as TI);
 	}
 
 	/**
@@ -694,7 +694,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	}
 
 	private async notifyTaskUpdate(workerInstance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
-		this.emit('updateTask', workerInstance.task);
+		this.emit('updateTask', workerInstance.task as TI);
 	}
 
 	/**
