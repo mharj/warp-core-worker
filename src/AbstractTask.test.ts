@@ -31,6 +31,7 @@ const taskInstance = new TestTask(
 		errors: new Set(),
 		props: {},
 		runCount: 0,
+		runErrorCount: 0,
 		start: undefined,
 		status: TaskStatusType.Init,
 		uuid: 'random-uuid',

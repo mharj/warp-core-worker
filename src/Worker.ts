@@ -14,7 +14,10 @@ import type {InferDataFromInstance} from './types/TaskData';
 import type {TTaskProps} from './types/TaskProps';
 import {TaskStatusType, getTaskStatusString, isEndState, isRunningState, isStartState} from './types/TaskStatus';
 
-type WorkerEvents<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = {
+/**
+ * Worker EventEmitter events
+ */
+export type WorkerEvents<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = {
 	import: () => void;
 	addTask: (task: TI) => void;
 	updateTask: (task: TI) => void;
@@ -136,6 +139,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 				errors: new Set(),
 				props,
 				runCount: 0,
+				runErrorCount: 0,
 				start: undefined,
 				status: TaskStatusType.Created,
 				uuid: this.buildTaskUniqueId(),
@@ -195,7 +199,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	): TaskWorkerInstance<FullTaskInstance<unknown, TI>> {
 		let haveReset = false;
 		const abortController = new AbortController();
-		const {uuid, commonContext, props, disabled, status, errorCount, errors, runCount, start, end, data} = params;
+		const {uuid, commonContext, props, disabled, status, errorCount, errors, runCount, runErrorCount, start, end, data} = params;
 		const classInstance = new TaskClass(
 			{
 				commonContext,
@@ -205,6 +209,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 				errors,
 				props,
 				runCount,
+				runErrorCount,
 				start,
 				status,
 				uuid,
@@ -269,7 +274,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * Wait for this task to be resolved/rejected (also starts task if not started yet)
 	 * @throws {Error} if task is not instant
 	 * @param task Task instance
-	 * @returns {Promise<ReturnType> } {@link TaskResponse} object with status and value
+	 * @returns {Promise<ReturnType> } Promise of current task data
 	 */
 	public async waitTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<ReturnType> {
 		const instance = this.tasks.get(task.uuid);
@@ -328,6 +333,33 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		return Array.from(this.tasks.values())
 			.filter((task) => task.type === type)
 			.map((task) => task.task) as FullTaskInstance<unknown, ITaskInstance<T, TTaskProps, unknown, CommonTaskContext>>[];
+	}
+
+	/**
+	 * Update task instance with new data, this is useful when task is updated from outside (like database events).
+	 *
+	 * Note: this will not directly affect tasks flow, just updates task data and status.
+	 * @param data
+	 */
+	public async updateTask(data: InferDataFromInstance<TI>): Promise<void> {
+		const instance = this.tasks.get(data.uuid);
+		this.assertInstance(instance, data.uuid);
+		// update current task instance with new data
+		instance.task.commonContext = data.commonContext;
+		instance.task.data = data.data;
+		instance.task.disabled = data.disabled;
+		instance.task.end = data.end;
+		instance.task.errorCount = data.errorCount;
+		instance.task.errors = data.errors;
+		instance.task.props = data.props;
+		instance.task.runCount = data.runCount;
+		instance.task.runErrorCount = data.runErrorCount;
+		instance.task.start = data.start;
+		instance.task.status = data.status;
+		instance.task.taskError = data.taskError;
+		// type - readonly - not allowed to change
+		// uuid - readonly - not allowed to change
+		await this.notifyTaskUpdate(instance);
 	}
 
 	/**
@@ -450,6 +482,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		instance.task.start = undefined; // reset start
 		instance.task.end = undefined; // reset end
 		instance.task.status = TaskStatusType.Init; // reset status
+		instance.task.errorCount = 0; // reset current error count
 	}
 
 	private async handleTriggerConnection(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>, isImport = false): Promise<void> {
@@ -541,6 +574,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			return false; // task is already resolved/rejected, we don't try to handle it again (this might happen if task is aborted externally while running)
 		}
 		instance.task.errorCount++;
+		instance.task.runErrorCount++;
 		instance.task.errors.add({ts: new Date(), error: haveError(err)});
 		if (err instanceof FatalTaskError) {
 			if (err instanceof AbortTaskError) {

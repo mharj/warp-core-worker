@@ -404,6 +404,7 @@ describe('Worker', () => {
 					errors: new Set(),
 					props: {test: 'hello'},
 					runCount: 1,
+					runErrorCount: 0,
 					start: new Date(),
 					status: TaskStatusType.Running,
 					taskError: undefined,
@@ -419,6 +420,7 @@ describe('Worker', () => {
 					errors: new Set(),
 					props: {test: 'hello'},
 					runCount: 1,
+					runErrorCount: 0,
 					start: new Date(),
 					status: TaskStatusType.Resolved,
 					taskError: undefined,
@@ -434,6 +436,7 @@ describe('Worker', () => {
 					errors: new Set(),
 					props: {test: 'hello'},
 					runCount: 1,
+					runErrorCount: 0,
 					start: new Date(),
 					status: TaskStatusType.Rejected,
 					taskError: new FatalTaskError('test'),
@@ -449,6 +452,7 @@ describe('Worker', () => {
 					errors: new Set(),
 					props: {test: 'hello'},
 					runCount: 1,
+					runErrorCount: 0,
 					start: new Date(),
 					status: TaskStatusType.Resolved,
 					taskError: undefined,
@@ -464,6 +468,7 @@ describe('Worker', () => {
 					errors: new Set(),
 					props: {test: 'hello'},
 					runCount: 1,
+					runErrorCount: 0,
 					start: new Date(),
 					status: TaskStatusType.Resolved,
 					taskError: undefined,
@@ -498,5 +503,25 @@ describe('Worker', () => {
 	it('should fail task if cant build task description', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'description-throw'}, {});
 		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(FatalTaskError, 'description-throw');
+	});
+	it('should update task data outside of instance', async function () {
+		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
+		await worker.updateTask({
+			commonContext: task.commonContext,
+			data: task.data,
+			disabled: true, // change as disabled
+			end: task.end,
+			errorCount: task.errorCount,
+			errors: task.errors,
+			props: task.props,
+			runCount: task.runCount,
+			runErrorCount: task.runErrorCount,
+			start: task.start,
+			status: task.status,
+			taskError: task.taskError,
+			type: task.type,
+			uuid: task.uuid,
+		});
+		expect(task.disabled).to.be.eq(true);
 	});
 });

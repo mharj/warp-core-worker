@@ -17,7 +17,7 @@ export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskP
 	/** this is actual error task did throw */
 	taskError: Error | undefined;
 	/**
-	 * @return Promise that resolves or rejects if task is allowed to restart
+	 * @return boolean if task is allowed to be restarted
 	 */
 	allowRestart(): boolean | Promise<boolean>;
 	/** Builds description of the task */
@@ -32,8 +32,11 @@ export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskP
 	 * @returns true if the task should be retried on failure
 	 */
 	retry(): Promise<boolean> | boolean;
+	/** callback when task is initialized */
 	onInit(): Promise<void> | void;
+	/** callback when task is resolved */
 	onResolved(): Promise<void> | void;
+	/** callback when task is rejected */
 	onRejected(): Promise<void> | void;
 	/**
 	 * Called before the task is running.

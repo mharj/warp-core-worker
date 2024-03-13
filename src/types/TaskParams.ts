@@ -7,15 +7,19 @@ import {ITaskInstance} from '../interfaces/ITask';
  */
 export type TaskParams<TP extends TTaskProps, CommonTaskContext> = {
 	readonly uuid: string;
-	disabled: boolean;
-	props: TP;
-	status: TaskStatusType;
-	errors: Set<{ts: Date; error: Error}>;
-	runCount: number;
-	errorCount: number;
-	start: Date | undefined;
-	end: Date | undefined;
 	commonContext: CommonTaskContext;
+	disabled: boolean;
+	end: Date | undefined;
+	/** Current run error count */
+	errorCount: number;
+	errors: Set<{ts: Date; error: Error}>;
+	props: TP;
+	/** Total run count */
+	runCount: number;
+	/** Total run error count */
+	runErrorCount: number;
+	start: Date | undefined;
+	status: TaskStatusType;
 };
 
 export type InferParamsFromInstance<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = TaskParams<TI['props'], TI['commonContext']>;
