@@ -310,14 +310,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		this.resetTaskInstance(instance);
 		await this.setTaskStatus(instance, TaskStatusType.Pending);
 		// reset and run task now
-		setTimeout(async () => {
-			try {
-				await this.runTask(instance);
-			} catch (err) {
-				// istanbul ignore next
-				await this.handleReject(instance, buildFatalError(err));
-			}
-		}, 0);
+		setTimeout(this.handleInstantJob.bind(this, instance), 0);
 	}
 
 	/**
@@ -499,7 +492,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 						// istanbul ignore next
 						return;
 					}
-					setTimeout(this.runTask.bind(this, instance), 0);
+					setTimeout(this.handleInstantJob.bind(this, instance), 0);
 					break;
 				case 'interval':
 					if (instance.intervalRef) {
@@ -508,7 +501,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 					}
 					await this.setTaskStatus(instance, TaskStatusType.Pending);
 					isImport && this.resetTaskInstance(instance);
-					setTimeout(this.runTask.bind(this, instance), 0); // first run
+					setTimeout(this.handleInstantJob.bind(this, instance), 0); // first run
 					instance.intervalRef = setInterval(this.handleTimedJob.bind(this, instance), instance.task.trigger.interval);
 					break;
 				case 'cron':
@@ -525,6 +518,15 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 					// istanbul ignore next
 					throw new FatalTaskError(this.buildLog(instance.task, `is not triggerable with trigger: ${JSON.stringify(instance.task.trigger)}`));
 			}
+		} catch (err) {
+			// istanbul ignore next
+			await this.handleReject(instance, buildFatalError(err));
+		}
+	}
+
+	private async handleInstantJob(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
+		try {
+			await this.runTask(instance);
 		} catch (err) {
 			// istanbul ignore next
 			await this.handleReject(instance, buildFatalError(err));
