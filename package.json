@@ -1,6 +1,6 @@
 {
 	"name": "warp-core-worker",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"description": "task runner which can run instant and timed tasks",
 	"main": "./dist/index.js",
 	"scripts": {
