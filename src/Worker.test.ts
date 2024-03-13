@@ -338,6 +338,8 @@ describe('Worker', () => {
 		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(Error, 'retry limit reached');
 		expect(task.errors).to.have.lengthOf(5);
 		expect(task.runCount).to.be.eq(4);
+		expect(task.errorCount).to.be.eq(4);
+		expect(task.runErrorCount).to.be.eq(4);
 		expect(task.props.onInit).to.be.eq(true);
 		expect(task.props.onPreStart).to.be.eq(true);
 		expect(task.props.onRejected).to.be.eq(true);

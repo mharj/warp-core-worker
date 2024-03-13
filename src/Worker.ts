@@ -311,7 +311,12 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		await this.setTaskStatus(instance, TaskStatusType.Pending);
 		// reset and run task now
 		setTimeout(async () => {
-			await this.runTask(instance);
+			try {
+				await this.runTask(instance);
+			} catch (err) {
+				// istanbul ignore next
+				await this.handleReject(instance, buildFatalError(err));
+			}
 		}, 0);
 	}
 
