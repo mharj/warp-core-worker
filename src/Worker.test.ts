@@ -21,6 +21,7 @@ import {
 	buildTaskLog,
 	getTaskStatusString,
 	FullTaskInstance,
+	TaskRetryError,
 } from './';
 
 chai.use(chaiAsPromised);
@@ -54,7 +55,7 @@ class Test1 extends AbstractSimpleTask<'test1', {test: string; onInit?: true; on
 	public readonly type = 'test1';
 	public trigger: TaskTrigger = {type: 'instant'};
 	public runTask(): string {
-		if (this.props.test === 'throw') {
+		if (this.props.test === 'throw' || this.props.test === 'throw-on-reject') {
 			throw new Error('test');
 		}
 		return 'test1';
@@ -84,10 +85,16 @@ class Test1 extends AbstractSimpleTask<'test1', {test: string; onInit?: true; on
 	}
 
 	public onResolved(): void {
+		if (this.props.test === 'throw-on-resolve') {
+			throw new Error('onResolved');
+		}
 		this.props.onResolved = true;
 	}
 
 	public onRejected(): void {
+		if (this.props.test === 'throw-on-reject') {
+			throw new Error('onRejected');
+		}
 		this.props.onRejected = true;
 	}
 
@@ -203,6 +210,33 @@ describe('Worker', () => {
 		task.status = TaskStatusType.Running;
 		await expect(worker.restartTask(task)).to.be.eventually.rejectedWith(Error, buildTaskLog(task, 'is already running'));
 	});
+	it('throw from onResolve', async function () {
+		const task = await worker.initializeTask(Test1, {test: 'throw-on-resolve'}, {});
+		await worker.waitTask(task);
+		const errors = Array.from(task.errors);
+		expect(errors.length).to.be.eq(1);
+		expect(task.runCount).to.be.eq(1);
+		expect(errors[0].error).to.be.instanceOf(Error).and.to.have.property('message', buildTaskLog(task, 'onResolved: onResolved'));
+	});
+	it('throw from onRejected', async function () {
+		const task = await worker.initializeTask(Test1, {test: 'throw-on-reject'}, {});
+		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(Error, 'retry limit reached');
+		const errors = Array.from(task.errors);
+		expect(task.runCount).to.be.eq(4);
+		expect(errors.length).to.be.eq(6); // 4 retry, 1 retry limit, 1 onRejected error
+		expect(errors[5].error).to.be.instanceOf(Error).and.to.have.property('message', buildTaskLog(task, 'onRejected: onRejected'));
+	});
+	it('should emit task event to worker updateTask', async function () {
+		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
+		const testPromise = new Promise<void>((resolve) => {
+			worker.on('updateTask', (_task) => {
+				expect(_task).to.be.eq(task);
+				resolve();
+			});
+		});
+		task.update();
+		await testPromise;
+	});
 	describe('restart', function () {
 		let task: FullTaskInstance<string | undefined, Test1>;
 		beforeEach(async function () {
@@ -299,7 +333,10 @@ describe('Worker', () => {
 	it('should get current task with getOrInitializeTask and hook to promise (resolved)', async function () {
 		// initial data
 		const oldTask = await worker.getOrInitializeTask(undefined, 'test1', Test1, {test: 'test'}, {});
-		await worker.waitTask(oldTask);
+		const waitTaskOncePromise = worker.waitTaskRun(oldTask);
+		const waitTaskPromise = worker.waitTask(oldTask);
+		await waitTaskOncePromise;
+		await waitTaskPromise;
 		// test
 		const task = await worker.getOrInitializeTask(oldTask.uuid, 'test1', Test1, {test: 'test'}, {});
 		expect(task.uuid).to.be.eq(oldTask.uuid);
@@ -335,7 +372,10 @@ describe('Worker', () => {
 		this.slow(1400); // ~620ms
 		const task = await worker.initializeTask(Test1, {test: 'throw'}, {});
 		await worker.startTask(task);
-		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(Error, 'retry limit reached');
+		await expect(worker.waitTaskRun(task)).to.be.eventually.rejectedWith(TaskRetryError, 'failed, retrying #1');
+		await expect(worker.waitTaskRun(task)).to.be.eventually.rejectedWith(TaskRetryError, 'failed, retrying #2');
+		await expect(worker.waitTaskRun(task)).to.be.eventually.rejectedWith(TaskRetryError, 'failed, retrying #3');
+		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(FatalTaskError, 'retry limit reached');
 		expect(task.errors).to.have.lengthOf(5);
 		expect(task.runCount).to.be.eq(4);
 		expect(task.errorCount).to.be.eq(4);
@@ -369,6 +409,7 @@ describe('Worker', () => {
 		await worker.startTask(task);
 		expect(worker.getTaskCount()).to.be.eq(1);
 		await expect(worker.waitTask(task)).to.be.eventually.rejectedWith(Error, `Task ${task.uuid} ${task.type} is not instant and cannot be waited`);
+		await expect(worker.waitTaskRun(task)).to.be.eventually.rejectedWith(Error, `Task ${task.uuid} ${task.type} is not instant and cannot be waited`);
 		await sleep(550);
 		expect(task.errorCount).to.be.eq(0); // no errors
 		expect(task.runCount).to.be.eq(3); // interval task runs also at start

@@ -1,11 +1,23 @@
+import * as EventEmitter from 'events';
 import {ILoggerLike} from '@avanio/logger-like';
+import TypedEmitter from 'typed-emitter';
 import {ITaskInstance} from './interfaces/ITask';
 import {TaskParams} from './types/TaskParams';
 import {TTaskProps} from './types/TaskProps';
 import {TaskStatusType} from './types/TaskStatus';
 import {TaskTrigger} from './types/TaskTrigger';
 
+/**
+ * Worker EventEmitter events
+ */
+export type TaskEvents = {
+	update: () => void;
+};
+
+export type TypedTaskEvents = TypedEmitter<TaskEvents>;
+
 export abstract class AbstractSimpleTask<TaskType extends string, TaskProps extends TTaskProps, ReturnType, CommonTaskContext>
+	extends (EventEmitter as new () => TypedTaskEvents)
 	implements ITaskInstance<TaskType, TaskProps, ReturnType, CommonTaskContext>
 {
 	public readonly uuid: string;
@@ -34,6 +46,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	private description?: string | Promise<string>;
 
 	constructor(params: TaskParams<TaskProps, CommonTaskContext>, data: ReturnType | undefined, abortSignal: AbortSignal, logger: ILoggerLike | undefined) {
+		super();
 		this.uuid = params.uuid;
 		this.props = params.props;
 		this.data = data;
@@ -57,6 +70,14 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 			this.description = this.buildDescription();
 		}
 		return this.description;
+	}
+
+	public update(): void {
+		this.emit('update');
+	}
+
+	public onUpdate(callback: () => void): void {
+		this.on('update', callback);
 	}
 
 	public abstract runTask(): Promise<ReturnType> | ReturnType;

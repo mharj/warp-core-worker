@@ -10,6 +10,7 @@ import {haveError} from './lib/errorUtil';
 import {FatalTaskError, buildFatalError} from './lib/FatalTaskError';
 import {TaskDisabledError} from './lib/TaskDisabledError';
 import {type TaskLogFunction, buildTaskLog} from './lib/taskLog';
+import {TaskRetryError} from './lib/TaskRetryError';
 import type {InferDataFromInstance} from './types/TaskData';
 import type {TTaskProps} from './types/TaskProps';
 import {TaskStatusType, getTaskStatusString, isEndState, isRunningState, isStartState} from './types/TaskStatus';
@@ -68,6 +69,7 @@ export interface TaskWorkerInstance<TI extends ITaskInstance<string, TTaskProps,
 	type: TI['type'];
 	task: TI;
 	promise: DeferredPromise<unknown>;
+	promiseOnce: DeferredPromise<unknown>;
 	cron?: Cron.CronJob;
 	intervalRef?: ReturnType<typeof setInterval>;
 }
@@ -116,10 +118,10 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	}
 
 	/**
-	 * Initialize task instance and store it in worker
+	 * Initialize and return task class instance and store it in worker
 	 * @param TaskClass Task class
-	 * @param props Task props
-	 * @param commonContext Common context
+	 * @param props Task constructor properties
+	 * @param commonContext Common context (all tasks shared this context type)
 	 * @returns Task class instance
 	 * @example
 	 * const task = await worker.initializeTask(MyTask, {prop1: 'value1'}, {common: 'context'});
@@ -162,6 +164,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		await this.setTaskStatus(currentWorkerInstance, classInstance.status); // change status to created
 		this.tasks.set(classInstance.uuid, currentWorkerInstance); // store task
 		this.emit('addTask', classInstance);
+		classInstance.onUpdate(() => this.emit('updateTask', classInstance)); // hook task update event to worker update event
 		return classInstance;
 	}
 
@@ -235,6 +238,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		// pre-build description
 		void this.handlePreBuildDescription(classInstance, currentWorkerInstance);
 		this.tasks.set(classInstance.uuid, currentWorkerInstance); // store task
+		classInstance.onUpdate(() => this.emit('updateTask', classInstance)); // hook task update event to worker update event
 		haveReset && this.setTaskStatus(currentWorkerInstance, classInstance.status).catch((err) => this.handleReject(currentWorkerInstance, err)); // trigger status change after reset (async, not wait here)
 		// handle task promises if task is already resolved/rejected
 		if (currentWorkerInstance.task.trigger.type === 'instant' && !currentWorkerInstance.promise.isDone) {
@@ -253,7 +257,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 
 	/**
 	 * Start this task instance.
-	 * @throws {Error} if task is already started
+	 * @throws {FatalTaskError} if task is already started
 	 * @param task Task instance
 	 * @returns Promise that will be resolved when task is started
 	 * @example
@@ -264,7 +268,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		this.assertInstance(instance, task.uuid);
 		// check if task is already started
 		if (instance.task.status > TaskStatusType.Init) {
-			throw new Error(this.buildLog(instance.task, 'is already started'));
+			throw new FatalTaskError(this.buildLog(instance.task, 'is already started'));
 		}
 		await this.setTaskStatus(instance, TaskStatusType.Init);
 		await this.handleTriggerConnection(instance);
@@ -272,39 +276,63 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 
 	/**
 	 * Wait for this task to be resolved/rejected (also starts task if not started yet)
-	 * @throws {Error} if task is not instant
-	 * @param task Task instance
+	 * @throws {FatalTaskError} if task is not instant
+	 * @throws {FatalTaskError} if task is already started
+	 * @param {FullTaskInstance<ReturnType, TI>} task Task instance
 	 * @returns {Promise<ReturnType> } Promise of current task data
 	 */
 	public async waitTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<ReturnType> {
 		const instance = this.tasks.get(task.uuid);
 		this.assertInstance(instance, task.uuid);
 		if (instance.task.trigger.type !== 'instant') {
-			throw new Error(this.buildLog(instance.task, 'is not instant and cannot be waited'));
+			throw new FatalTaskError(this.buildLog(instance.task, 'is not instant and cannot be waited'));
 		}
 		// not started yet - start it
 		if (instance.task.status < TaskStatusType.Init) {
 			await this.startTask(task);
 		}
-		return instance.promise as Promise<ReturnType>;
+		return instance.promise as Promise<ReturnType>; // hook to main promise
+	}
+
+	/**
+	 * Wait for this task to be resolved/rejected on each run (also starts task if not started yet)
+	 *
+	 * Note: Task will be running and retried even if this Promise is thrown as new Promise will be created for each new run.
+	 * @throws {FatalTaskError} if task is not instant
+	 * @throws {FatalTaskError} if task is already started
+	 * @throws {TaskRetryError} if task will be retried and continue to next retry run
+	 * @param {FullTaskInstance<ReturnType, TI>} task Task instance
+	 * @returns {Promise<ReturnType> } Promise of single run task data
+	 */
+	public async waitTaskRun<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<ReturnType> {
+		const instance = this.tasks.get(task.uuid);
+		this.assertInstance(instance, task.uuid);
+		if (instance.task.trigger.type !== 'instant') {
+			throw new FatalTaskError(this.buildLog(instance.task, 'is not instant and cannot be waited'));
+		}
+		// not started yet - start it
+		if (instance.task.status < TaskStatusType.Init) {
+			await this.startTask(task);
+		}
+		return instance.promiseOnce as Promise<ReturnType>; // hook to single retry promise
 	}
 
 	/**
 	 * Restart this task instance if it's not in running state
-	 * @throws {Error} if task is already running
-	 * @throws {Error} if task is not allowed to restart
-	 * @param task Task instance
+	 * @throws {FatalTaskError} if task is already running
+	 * @throws {FatalTaskError} if task is not allowed to restart
+	 * @param {FullTaskInstance<ReturnType, TI>} task Task instance
 	 */
 	public async restartTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<void> {
 		const instance = this.tasks.get(task.uuid);
 		this.assertInstance(instance, task.uuid);
 		// check if we can restart this task
 		if (!(await instance.task.allowRestart())) {
-			throw new Error(this.buildLog(instance.task, 'is not allowed to restart'));
+			throw new FatalTaskError(this.buildLog(instance.task, 'is not allowed to restart'));
 		}
 		// check if task is already running just before reset and start
 		if (isRunningState(instance.task.status)) {
-			throw new Error(this.buildLog(instance.task, 'is already running'));
+			throw new FatalTaskError(this.buildLog(instance.task, 'is already running'));
 		}
 		!instance.promise.isDone && instance.promise.reject(new Error(this.buildLog(instance.task, 'restarting'))); // throw error to reject old promise if someone is waiting for it
 		this.resetTaskInstance(instance);
@@ -336,8 +364,8 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	/**
 	 * Update task instance with new data, this is useful when task is updated from outside (like database events).
 	 *
-	 * Note: this will not directly affect tasks flow, just updates task data and status.
-	 * @param data
+	 * Note: this will not directly affect tasks flow directly, just updates task data and status.
+	 * @param {InferDataFromInstance<TI>} data - updated task data
 	 */
 	public async updateTask(data: InferDataFromInstance<TI>): Promise<void> {
 		const instance = this.tasks.get(data.uuid);
@@ -483,6 +511,10 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		instance.task.errorCount = 0; // reset current error count
 	}
 
+	/**
+	 * @throws never
+	 * @returns {Promise<void>} - this method won't throw any error
+	 */
 	private async handleTriggerConnection(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>, isImport = false): Promise<void> {
 		try {
 			switch (instance.task.trigger.type) {
@@ -524,6 +556,11 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		}
 	}
 
+	/**
+	 * handle instance job start
+	 * @throws never
+	 * @returns {Promise<void>} - this method won't throw any error
+	 */
 	private async handleInstantJob(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
 		try {
 			await this.runTask(instance);
@@ -536,6 +573,8 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	/**
 	 * handle timed jobs
 	 * this resets task instance and run it again
+	 * @throws never
+	 * @returns {Promise<void>} - this method won't throw any error
 	 */
 	private async handleTimedJob(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
 		try {
@@ -592,9 +631,12 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			return this.handleReject(instance, err);
 		} else if (!(await instance.task.retry())) {
 			const limitError = new FatalTaskError(this.logKey('flow_limit', instance, 'retry limit reached'));
-			instance.task.errors.add({ts: new Date(), error: haveError(limitError)});
+			instance.task.errors.add({ts: new Date(), error: limitError});
 			return this.handleReject(instance, limitError);
 		} else {
+			// throw once and create new promise for retry
+			instance.promiseOnce.reject(new TaskRetryError(this.buildLog(instance.task, 'failed, retrying'), instance.task.errorCount)); // reject once promise
+			instance.promiseOnce = new DeferredPromise<unknown>(); // reset once promise
 			this.logKey('flow_retry', instance, `retry: ${haveError(err).message}`);
 			const sleepTime = await instance.task.onErrorSleep();
 			await sleep(this.stepFlowDelay, {signal: instance.abortController.signal});
@@ -620,8 +662,18 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		} else {
 			instance.task.status !== TaskStatusType.Rejected && (await this.setTaskStatus(instance, TaskStatusType.Rejected));
 		}
-		await instance.task.onRejected();
+		try {
+			await instance.task.onRejected();
+		} catch (onRejectedPromiseError) {
+			// attach onRejected error to current task errors list
+			const onRejectedError = new Error(buildTaskLog(instance.task, `onRejected: ${haveError(onRejectedPromiseError).message}`));
+			if (onRejectedPromiseError instanceof Error) {
+				onRejectedError.stack = onRejectedPromiseError.stack;
+			}
+			instance.task.errors.add({ts: new Date(), error: onRejectedError});
+		}
 		instance.promise.reject(err);
+		instance.promiseOnce.reject(err); // reject once promise
 		return true;
 	}
 
@@ -634,7 +686,16 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		this.logKey('resolved', instance, 'resolved');
 		instance.task.end = new Date();
 		await this.setTaskStatus(instance, TaskStatusType.Resolved);
-		await instance.task.onResolved();
+		try {
+			await instance.task.onResolved();
+		} catch (onResolvedPromiseError) {
+			// attach onResolved error to current task errors list
+			const onResolvedError = new Error(buildTaskLog(instance.task, `onResolved: ${haveError(onResolvedPromiseError).message}`));
+			if (onResolvedPromiseError instanceof Error) {
+				onResolvedError.stack = onResolvedPromiseError.stack;
+			}
+			instance.task.errors.add({ts: new Date(), error: onResolvedError});
+		}
 		return true;
 	}
 
@@ -671,6 +732,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			instance.task.end = originalEnd; // revert end
 			await this.setTaskStatus(instance, originalStatus); // revert status
 			instance.promise.resolve(instance.task.data); // solve waiting promise
+			instance.promiseOnce.resolve(instance.task.data); // solve waiting promise
 			return true; // task not needed to be started
 		}
 		await this.setTaskStatus(instance, TaskStatusType.Starting);
@@ -685,6 +747,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		// handle task resolve
 		const status = await this.handleResolve(instance);
 		instance.promise.resolve(data); // solve waiting promise
+		instance.promiseOnce.resolve(data); // solve waiting promise
 		return status;
 	}
 
@@ -701,11 +764,17 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		return {
 			abortController,
 			promise: new DeferredPromise<unknown>(),
+			promiseOnce: new DeferredPromise<unknown>(),
 			task,
 			type: task.type,
 		};
 	}
 
+	/**
+	 * lookup single type task instance
+	 * @throws never
+	 * @returns TaskWorkerInstance<FullTaskInstance<unknown, TI>> | undefined
+	 */
 	private lookupSingleInstanceTask<ReturnType>(
 		taskInstance: FullTaskInstance<ReturnType, TI>,
 	): TaskWorkerInstance<FullTaskInstance<ReturnType, TI>> | undefined {
@@ -748,6 +817,11 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		return out;
 	}
 
+	/**
+	 * handle pre-build task description
+	 * @throws never
+	 * @returns {Promise<void>} - this method won't throw any error
+	 */
 	private async handlePreBuildDescription(
 		classInstance: ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>,
 		currentWorkerInstance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>,

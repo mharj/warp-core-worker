@@ -51,4 +51,10 @@ describe('Test', function () {
 		expect(await taskInstance.retry()).to.be.false;
 		expect(await taskInstance.allowRestart()).to.be.false;
 	});
+	it('should emit events', function (done) {
+		taskInstance.onUpdate(() => {
+			done();
+		});
+		taskInstance.update();
+	});
 });

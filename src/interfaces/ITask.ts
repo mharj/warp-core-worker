@@ -46,6 +46,17 @@ export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskP
 	 * @returns true if the task should be started
 	 */
 	onPreStart(): Promise<boolean> | boolean;
+
+	/**
+	 * Notify about task update (like current props update).
+	 */
+	update(): void;
+
+	/**
+	 * Event listener for task update event.
+	 * @param callback to call when task is updated
+	 */
+	onUpdate(callback: () => void): void;
 }
 
 export type ITaskConstructor<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = new (
