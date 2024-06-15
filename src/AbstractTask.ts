@@ -44,6 +44,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	public data: ReturnType | undefined;
 	public taskError: Error | undefined;
 	private description?: string | Promise<string>;
+	public progress: number | undefined;
 
 	constructor(params: TaskParams<TaskProps, CommonTaskContext>, data: ReturnType | undefined, abortSignal: AbortSignal, logger: ILoggerLike | undefined) {
 		super();
@@ -161,4 +162,14 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	 * }
 	 */
 	public onResolved(): Promise<void> | void {}
+
+	/**
+	 * Set the task progress and emit the update event
+	 */
+	protected setProgress(progress: number | undefined): void {
+		if (this.progress !== progress) {
+			this.progress = progress;
+			this.update();
+		}
+	}
 }

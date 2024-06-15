@@ -16,6 +16,8 @@ export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskP
 	data: ReturnType | undefined;
 	/** this is actual error task did throw */
 	taskError: Error | undefined;
+	/** optional task progress */
+	progress: number | undefined;
 	/**
 	 * @return boolean if task is allowed to be restarted
 	 */

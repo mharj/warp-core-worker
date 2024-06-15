@@ -19,7 +19,7 @@ import {TaskStatusType, getTaskStatusString, isEndState, isRunningState, isStart
  * Worker EventEmitter events
  */
 export type WorkerEvents<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = {
-	import: () => void;
+	import: (task: TI[]) => void;
 	addTask: (task: TI) => void;
 	updateTask: (task: TI) => void;
 	deleteTask: (task: TI) => void;
@@ -445,7 +445,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 					await this.handleTriggerConnection(currentWorkerInstance, true);
 				}
 			}
-			this.emit('import');
+			this.emit('import', taskInstances.map((instance) => instance.task) as TI[]);
 		} catch (err) {
 			// istanbul ignore next
 			this.logger.error(`Task import error: ${haveError(err)}`);
@@ -657,6 +657,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		this.logKey('rejected', instance, `rejected: ${haveError(err).message}`);
 		instance.task.end = new Date();
 		instance.task.taskError = err;
+		instance.task.progress = undefined; // clear progress
 		if (instance.abortController.signal.aborted) {
 			instance.task.status !== TaskStatusType.Aborted && (await this.setTaskStatus(instance, TaskStatusType.Aborted));
 		} else {
@@ -685,6 +686,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	private async handleResolve(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<boolean> {
 		this.logKey('resolved', instance, 'resolved');
 		instance.task.end = new Date();
+		instance.task.progress = undefined; // clear progress
 		await this.setTaskStatus(instance, TaskStatusType.Resolved);
 		try {
 			await instance.task.onResolved();

@@ -58,6 +58,11 @@ class Test1 extends AbstractSimpleTask<'test1', {test: string; onInit?: true; on
 		if (this.props.test === 'throw' || this.props.test === 'throw-on-reject') {
 			throw new Error('test');
 		}
+		if (this.props.test === 'progress') {
+			this.setProgress(25);
+			this.setProgress(50);
+			this.setProgress(75);
+		}
 		return 'test1';
 	}
 
@@ -566,5 +571,22 @@ describe('Worker', () => {
 			uuid: task.uuid,
 		});
 		expect(task.disabled).to.be.eq(true);
+	});
+	it('should get task progress events', async function () {
+		const updateTaskSpy = sinon.spy();
+		const task = await worker.initializeTask(Test1, {test: 'progress'}, {});
+		worker.on('updateTask', (task) => updateTaskSpy({[getTaskStatusString(task.status)]: task.progress}));
+		await worker.waitTask(task);
+		expect(updateTaskSpy.callCount).to.be.eq(7);
+		const taskProgress = updateTaskSpy.args.map(([arg]) => arg);
+		expect(taskProgress).to.be.eql([
+			{init: undefined},
+			{starting: undefined},
+			{running: undefined},
+			{running: 25},
+			{running: 50},
+			{running: 75},
+			{resolved: undefined},
+		]);
 	});
 });
