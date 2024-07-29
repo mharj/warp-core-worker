@@ -75,7 +75,7 @@
 		"uuid": "^10.0.0"
 	},
 	"dependencies": {
-		"@avanio/logger-like": "^0.1.1",
+		"@avanio/logger-like": "^0.2.0",
 		"@avanio/sleep": "^0.0.3",
 		"cron": "^3.1.7",
 		"node-abort-controller": "^3.1.1",

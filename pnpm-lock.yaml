@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@avanio/logger-like':
-        specifier: ^0.1.1
-        version: 0.1.1
+        specifier: ^0.2.0
+        version: 0.2.0
       '@avanio/sleep':
         specifier: ^0.0.3
         version: 0.0.3
@@ -118,8 +118,8 @@ packages:
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
 
-  '@avanio/logger-like@0.1.1':
-    resolution: {integrity: sha512-5u1ZX6kR9wgt4eYQYrgdhKL0WAsiWz2Kbinp+lPyoEs4/uFl2BhgG5X7obG2OZ2NvZL4f76X6Qm+QsT/o5BOYA==}
+  '@avanio/logger-like@0.2.0':
+    resolution: {integrity: sha512-eiaYKaICZyhxyW8266L0piKMoUcEAlPCB/Bm0VvNRnuQ8cF85lN3yPJ3onzHRukL/gKg09uGvAbCIm5ZsyJ3PQ==}
 
   '@avanio/sleep@0.0.3':
     resolution: {integrity: sha512-CeqnqA3oKh7nO5braZOb1konvAg62hxHO3bLvtjwzzU5acmOwuy7AuUQX+OpUBlLS+WCJxU+WZ47ROVKkv5eGQ==}
@@ -2283,7 +2283,7 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.5
       '@jridgewell/trace-mapping': 0.3.25
 
-  '@avanio/logger-like@0.1.1': {}
+  '@avanio/logger-like@0.2.0': {}
 
   '@avanio/sleep@0.0.3': {}
 
