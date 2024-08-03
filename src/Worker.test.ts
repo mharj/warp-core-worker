@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable import/namespace */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-unused-expressions */
 /* eslint-disable sonarjs/no-duplicate-string */
 /* eslint-disable sonarjs/no-identical-functions */
-import {ILoggerLike, LogLevel} from '@avanio/logger-like';
+import {type ILoggerLike, LogLevel} from '@avanio/logger-like';
 import {sleep} from '@avanio/sleep';
 import * as chai from 'chai';
 import * as chaiAsPromised from 'chai-as-promised';
@@ -12,15 +13,15 @@ import 'mocha';
 import {v4 as uuid} from 'uuid';
 import {
 	AbstractSimpleTask,
-	ImportObjectMap,
+	type ImportObjectMap,
 	Worker,
-	TaskTrigger,
+	type TaskTrigger,
 	TaskStatusType,
 	FatalTaskError,
-	TaskWorkerLogMapping,
+	type TaskWorkerLogMapping,
 	buildTaskLog,
 	getTaskStatusString,
-	FullTaskInstance,
+	type FullTaskInstance,
 	TaskRetryError,
 } from './';
 

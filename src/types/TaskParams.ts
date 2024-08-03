@@ -1,6 +1,6 @@
-import {TTaskProps} from './TaskProps';
-import {TaskStatusType} from './TaskStatus';
-import {ITaskInstance} from '../interfaces/ITask';
+import {type TTaskProps} from './TaskProps';
+import {type TaskStatusType} from './TaskStatus';
+import {type ITaskInstance} from '../interfaces/ITask';
 
 /**
  * Task constructor params

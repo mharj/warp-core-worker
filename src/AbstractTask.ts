@@ -1,11 +1,11 @@
 import * as EventEmitter from 'events';
-import {ILoggerLike} from '@avanio/logger-like';
-import TypedEmitter from 'typed-emitter';
-import {ITaskInstance} from './interfaces/ITask';
-import {TaskParams} from './types/TaskParams';
-import {TTaskProps} from './types/TaskProps';
-import {TaskStatusType} from './types/TaskStatus';
-import {TaskTrigger} from './types/TaskTrigger';
+import {type ILoggerLike} from '@avanio/logger-like';
+import type TypedEmitter from 'typed-emitter';
+import {type ITaskInstance} from './interfaces/ITask';
+import {type TaskParams} from './types/TaskParams';
+import {type TTaskProps} from './types/TaskProps';
+import {type TaskStatusType} from './types/TaskStatus';
+import {type TaskTrigger} from './types/TaskTrigger';
 
 /**
  * Worker EventEmitter events

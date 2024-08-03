@@ -1,7 +1,7 @@
-import {ILoggerLike} from '@avanio/logger-like';
-import {InferParamsFromInstance, TaskParams} from '../types/TaskParams';
-import {TTaskProps} from '../types/TaskProps';
-import {TaskTrigger} from '../types/TaskTrigger';
+import {type ILoggerLike} from '@avanio/logger-like';
+import {type InferParamsFromInstance, type TaskParams} from '../types/TaskParams';
+import {type TTaskProps} from '../types/TaskProps';
+import {type TaskTrigger} from '../types/TaskTrigger';
 
 export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskProps, ReturnType, CommonTaskContext>
 	extends TaskParams<TaskProps, CommonTaskContext> {

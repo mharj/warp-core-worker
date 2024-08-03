@@ -1,8 +1,8 @@
 import * as EventEmitter from 'events';
-import {ILoggerLike, LogLevel, LogMapping, MapLogger} from '@avanio/logger-like';
+import {type ILoggerLike, LogLevel, type LogMapping, MapLogger} from '@avanio/logger-like';
 import {sleep} from '@avanio/sleep';
 import * as Cron from 'cron';
-import TypedEmitter from 'typed-emitter';
+import type TypedEmitter from 'typed-emitter';
 import type {ITaskConstructorInferFromInstance, ITaskInstance} from './interfaces/ITask';
 import {AbortTaskError} from './lib/AbortTaskError';
 import {DeferredPromise} from './lib/DeferredPromise';
@@ -239,7 +239,9 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		void this.handlePreBuildDescription(classInstance, currentWorkerInstance);
 		this.tasks.set(classInstance.uuid, currentWorkerInstance); // store task
 		classInstance.onUpdate(() => this.emit('updateTask', classInstance)); // hook task update event to worker update event
-		haveReset && this.setTaskStatus(currentWorkerInstance, classInstance.status).catch((err) => this.handleReject(currentWorkerInstance, err)); // trigger status change after reset (async, not wait here)
+		if (haveReset) {
+			this.setTaskStatus(currentWorkerInstance, classInstance.status).catch((err) => this.handleReject(currentWorkerInstance, err)); // trigger status change after reset (async, not wait here)
+		}
 		// handle task promises if task is already resolved/rejected
 		if (currentWorkerInstance.task.trigger.type === 'instant' && !currentWorkerInstance.promise.isDone) {
 			if (currentWorkerInstance.task.status === TaskStatusType.Resolved) {
@@ -334,7 +336,9 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		if (isRunningState(instance.task.status)) {
 			throw new FatalTaskError(this.buildLog(instance.task, 'is already running'));
 		}
-		!instance.promise.isDone && instance.promise.reject(new Error(this.buildLog(instance.task, 'restarting'))); // throw error to reject old promise if someone is waiting for it
+		if (!instance.promise.isDone) {
+			instance.promise.reject(new Error(this.buildLog(instance.task, 'restarting'))); // throw error to reject old promise if someone is waiting for it
+		}
 		this.resetTaskInstance(instance);
 		await this.setTaskStatus(instance, TaskStatusType.Pending);
 		// reset and run task now
@@ -484,7 +488,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		await this.handleTaskAbort(instance);
 		try {
 			await instance.promise; // wait promise to be resolved/rejected
-		} catch (err) {
+		} catch (_err) {
 			// ignore abort error
 		}
 	}
@@ -532,7 +536,9 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 						clearInterval(instance.intervalRef);
 					}
 					await this.setTaskStatus(instance, TaskStatusType.Pending);
-					isImport && this.resetTaskInstance(instance);
+					if (isImport) {
+						this.resetTaskInstance(instance);
+					}
 					setTimeout(this.handleInstantJob.bind(this, instance), 0); // first run
 					instance.intervalRef = setInterval(this.handleTimedJob.bind(this, instance), instance.task.trigger.interval);
 					break;
@@ -542,7 +548,9 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 						instance.cron.stop();
 					}
 					await this.setTaskStatus(instance, TaskStatusType.Pending);
-					isImport && this.resetTaskInstance(instance);
+					if (isImport) {
+						this.resetTaskInstance(instance);
+					}
 					instance.cron = new Cron.CronJob(instance.task.trigger.cron, this.handleTimedJob.bind(this, instance));
 					instance.cron.start();
 					break;
@@ -659,9 +667,13 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		instance.task.taskError = err;
 		instance.task.progress = undefined; // clear progress
 		if (instance.abortController.signal.aborted) {
-			instance.task.status !== TaskStatusType.Aborted && (await this.setTaskStatus(instance, TaskStatusType.Aborted));
+			if (instance.task.status !== TaskStatusType.Aborted) {
+				await this.setTaskStatus(instance, TaskStatusType.Aborted);
+			}
 		} else {
-			instance.task.status !== TaskStatusType.Rejected && (await this.setTaskStatus(instance, TaskStatusType.Rejected));
+			if (instance.task.status !== TaskStatusType.Rejected) {
+				await this.setTaskStatus(instance, TaskStatusType.Rejected);
+			}
 		}
 		try {
 			await instance.task.onRejected();

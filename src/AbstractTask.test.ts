@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable no-unused-expressions */
 import * as chai from 'chai';
 import 'mocha';
 import * as chaiAsPromised from 'chai-as-promised';
 import {AbstractSimpleTask} from './AbstractTask';
-import {TTaskProps} from './types/TaskProps';
+import {type TTaskProps} from './types/TaskProps';
 import {TaskStatusType} from './types/TaskStatus';
-import {TaskTrigger} from './types/TaskTrigger';
+import {type TaskTrigger} from './types/TaskTrigger';
 
 chai.use(chaiAsPromised);
 const expect = chai.expect;
