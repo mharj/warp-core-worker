@@ -1,15 +1,8 @@
+/* eslint-disable sort-keys */
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable no-unused-expressions */
-import * as chai from 'chai';
-import 'mocha';
-import * as chaiAsPromised from 'chai-as-promised';
-import {AbstractSimpleTask} from './AbstractTask';
-import {type TTaskProps} from './types/TaskProps';
-import {TaskStatusType} from './types/TaskStatus';
-import {type TaskTrigger} from './types/TaskTrigger';
-
-chai.use(chaiAsPromised);
-const expect = chai.expect;
+import {describe, expect, it} from 'vitest';
+import {AbstractSimpleTask, TaskStatusType, type TaskTrigger, type TTaskProps} from './index.mjs';
 
 class TestTask extends AbstractSimpleTask<'test', TTaskProps, void, {owner: string}> {
 	public readonly type = 'test';
@@ -28,11 +21,11 @@ const taskInstance = new TestTask(
 		commonContext: {owner: 'test'},
 		disabled: false,
 		end: undefined,
-		errorCount: 0,
+		tryCount: 0,
 		errors: new Set(),
 		props: {},
-		runCount: 0,
-		runErrorCount: 0,
+		resolveCount: 0,
+		rejectCount: 0,
 		start: undefined,
 		status: TaskStatusType.Init,
 		uuid: 'random-uuid',
@@ -52,10 +45,13 @@ describe('Test', function () {
 		expect(await taskInstance.retry()).to.be.false;
 		expect(await taskInstance.allowRestart()).to.be.false;
 	});
-	it('should emit events', function (done) {
-		taskInstance.onUpdate(() => {
-			done();
+	it('should emit events', async function () {
+		const promise = new Promise<void>((resolve) => {
+			taskInstance.on('update', () => {
+				resolve();
+			});
 		});
 		taskInstance.update();
+		await promise;
 	});
 });

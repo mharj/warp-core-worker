@@ -1,23 +1,13 @@
-import * as EventEmitter from 'events';
+import {EventEmitter} from 'events';
 import {type ILoggerLike} from '@avanio/logger-like';
-import type TypedEmitter from 'typed-emitter';
-import {type ITaskInstance} from './interfaces/ITask';
-import {type TaskParams} from './types/TaskParams';
-import {type TTaskProps} from './types/TaskProps';
-import {type TaskStatusType} from './types/TaskStatus';
-import {type TaskTrigger} from './types/TaskTrigger';
-
-/**
- * Worker EventEmitter events
- */
-export type TaskEvents = {
-	update: () => void;
-};
-
-export type TypedTaskEvents = TypedEmitter<TaskEvents>;
+import {type TaskEventMap, type ITaskInstance} from './interfaces/ITask.mjs';
+import {type TaskParams} from './types/TaskParams.mjs';
+import {type TTaskProps} from './types/TaskProps.mjs';
+import {type TaskStatusType} from './types/TaskStatus.mjs';
+import {type TaskTrigger} from './types/TaskTrigger.mjs';
 
 export abstract class AbstractSimpleTask<TaskType extends string, TaskProps extends TTaskProps, ReturnType, CommonTaskContext>
-	extends (EventEmitter as new () => TypedTaskEvents)
+	extends EventEmitter<TaskEventMap<AbstractSimpleTask<TaskType, TTaskProps, ReturnType, CommonTaskContext>>>
 	implements ITaskInstance<TaskType, TaskProps, ReturnType, CommonTaskContext>
 {
 	public readonly uuid: string;
@@ -30,12 +20,11 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	public readonly singleInstance: boolean = false;
 	public abstract trigger: TaskTrigger;
 	public props: TaskProps;
-	public status: TaskStatusType;
 	public disabled: boolean;
 	public errors: Set<{ts: Date; error: Error}>;
-	public runCount: number;
-	public runErrorCount: number;
-	public errorCount: number;
+	public resolveCount: number;
+	public rejectCount: number;
+	public tryCount: number;
 	public start: Date | undefined;
 	public end: Date | undefined;
 	public commonContext: CommonTaskContext;
@@ -44,19 +33,20 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	public data: ReturnType | undefined;
 	public taskError: Error | undefined;
 	private description?: string | Promise<string>;
-	public progress: number | undefined;
+	private _progress: number | undefined;
+	private _status: TaskStatusType;
 
 	constructor(params: TaskParams<TaskProps, CommonTaskContext>, data: ReturnType | undefined, abortSignal: AbortSignal, logger: ILoggerLike | undefined) {
 		super();
 		this.uuid = params.uuid;
 		this.props = params.props;
 		this.data = data;
-		this.status = params.status;
+		this._status = params.status;
 		this.disabled = params.disabled;
 		this.errors = params.errors;
-		this.runCount = params.runCount;
-		this.runErrorCount = params.runErrorCount;
-		this.errorCount = params.errorCount;
+		this.resolveCount = params.resolveCount;
+		this.rejectCount = params.rejectCount;
+		this.tryCount = params.tryCount;
 		this.start = params?.start ?? undefined;
 		this.end = params?.end ?? undefined;
 		this.commonContext = params.commonContext;
@@ -66,6 +56,29 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 
 	protected abstract buildDescription(): Promise<string> | string;
 
+	public get progress(): number | undefined {
+		return this._progress;
+	}
+
+	public set progress(progress: number | undefined) {
+		if (this._progress !== progress) {
+			this._progress = progress;
+			this.update();
+		}
+	}
+
+	public get status(): TaskStatusType {
+		return this._status;
+	}
+
+	/**
+	 * When status is set, progress is reset to undefined
+	 */
+	public set status(status: TaskStatusType) {
+		this._status = status;
+		this._progress = undefined;
+	}
+
 	public getDescription(): string | Promise<string> {
 		if (!this.description) {
 			this.description = this.buildDescription();
@@ -74,11 +87,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	}
 
 	public update(): void {
-		this.emit('update');
-	}
-
-	public onUpdate(callback: () => void): void {
-		this.on('update', callback);
+		this.emit('update', this);
 	}
 
 	public abstract runTask(): Promise<ReturnType> | ReturnType;
@@ -100,7 +109,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	 * @returns {Promise<boolean>} true if the task should be retried, false otherwise
 	 * @example
 	 * public override retry(): Promise<boolean> | boolean {
-	 *   return this.errorCount < 4;
+	 *   return this.tryCount < 4;
 	 * }
 	 */
 	public retry(): Promise<boolean> | boolean {
@@ -112,7 +121,7 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	 * @returns {Promise<number> | number} time in milliseconds to sleep before retrying
 	 * @example
 	 * public override onErrorSleep(): Promise<number> | number {
-	 * 	 return this.runCount * 100;
+	 * 	 return this.tryCount * 100;
 	 * }
 	 */
 	public onErrorSleep(): Promise<number> | number {
@@ -167,9 +176,6 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	 * Set the task progress and emit the update event
 	 */
 	protected setProgress(progress: number | undefined): void {
-		if (this.progress !== progress) {
-			this.progress = progress;
-			this.update();
-		}
+		this.progress = progress;
 	}
 }

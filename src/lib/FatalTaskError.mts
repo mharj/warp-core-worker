@@ -1,4 +1,4 @@
-import {buildErrorString} from './errorUtil';
+import {buildErrorString} from './errorUtil.mjs';
 
 /**
  * FatalTaskError is a special control error which tells Worker to stop re-try and fail the task.

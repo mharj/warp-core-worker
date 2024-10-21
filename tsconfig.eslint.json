@@ -6,7 +6,7 @@
 		"outDir": "./test-dist",
 		"noUnusedLocals": false
 	},
-	"include": ["test/**/*.ts", "src/**/*.ts"],
-	"exclude": ["dist/*", "node_modules/*"],
+	"include": ["src/"],
+	"exclude": ["dist/", "node_modules/"],
 	"importHelpers": false
 }

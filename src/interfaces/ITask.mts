@@ -1,10 +1,18 @@
+import {type EventEmitter} from 'events';
 import {type ILoggerLike} from '@avanio/logger-like';
-import {type InferParamsFromInstance, type TaskParams} from '../types/TaskParams';
-import {type TTaskProps} from '../types/TaskProps';
-import {type TaskTrigger} from '../types/TaskTrigger';
+import {type InferParamsFromInstance, type TaskParams} from '../types/TaskParams.mjs';
+import {type TTaskProps} from '../types/TaskProps.mjs';
+import {type TaskTrigger} from '../types/TaskTrigger.mjs';
+/**
+ * Worker EventEmitter events
+ */
+export type TaskEventMap<This extends ITaskInstance<string, TTaskProps, unknown, unknown>> = {
+	update: [this: This];
+};
 
 export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskProps, ReturnType, CommonTaskContext>
-	extends TaskParams<TaskProps, CommonTaskContext> {
+	extends TaskParams<TaskProps, CommonTaskContext>,
+		EventEmitter<TaskEventMap<ITaskInstance<TaskType, TaskProps, ReturnType, CommonTaskContext>>> {
 	/** limit only one instance of this task type */
 	readonly singleInstance: boolean;
 	/** task type string */
@@ -50,15 +58,9 @@ export interface ITaskInstance<TaskType extends string, TaskProps extends TTaskP
 	onPreStart(): Promise<boolean> | boolean;
 
 	/**
-	 * Notify about task update (like current props update).
+	 * manual Notify about task update (like current props update).
 	 */
 	update(): void;
-
-	/**
-	 * Event listener for task update event.
-	 * @param callback to call when task is updated
-	 */
-	onUpdate(callback: () => void): void;
 }
 
 export type ITaskConstructor<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = new (

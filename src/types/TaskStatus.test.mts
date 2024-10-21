@@ -1,10 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable no-unused-expressions */
-import * as chai from 'chai';
-import 'mocha';
-import {TaskStatusType, getTaskStatusString, isEndState, isRunningState, isStartState} from './TaskStatus';
-
-const expect = chai.expect;
+import {describe, expect, it} from 'vitest';
+import {TaskStatusType, getTaskStatusString, isEndState, isRunningState, isStartState} from './TaskStatus.mjs';
 
 describe('Test', function () {
 	it('should build task status as string', function () {

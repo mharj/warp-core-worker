@@ -1,5 +1,5 @@
-import {type ITaskInstance} from '../interfaces/ITask';
-import {type TTaskProps} from '../types/TaskProps';
+import {type ITaskInstance} from '../interfaces/ITask.mjs';
+import {type TTaskProps} from '../types/TaskProps.mjs';
 
 /** Task log build function type */
 export type TaskLogFunction = (task: ITaskInstance<string, TTaskProps, unknown, unknown>, message: string) => string;

@@ -1,10 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-expressions */
 /* eslint-disable no-unused-expressions */
-import * as chai from 'chai';
-import 'mocha';
-import {DeferredPromise} from './DeferredPromise';
-
-const expect = chai.expect;
+import {describe, expect, it} from 'vitest';
+import {DeferredPromise} from './DeferredPromise.mjs';
 
 describe('DeferredPromise', function () {
 	it('should check if Promise is already resolved', function () {

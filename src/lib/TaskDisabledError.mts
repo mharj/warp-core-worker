@@ -1,4 +1,4 @@
-import {FatalTaskError} from './FatalTaskError';
+import {FatalTaskError} from './FatalTaskError.mjs';
 
 export class TaskDisabledError extends FatalTaskError {
 	constructor(message: string) {

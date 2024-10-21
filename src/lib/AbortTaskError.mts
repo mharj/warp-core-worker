@@ -1,4 +1,4 @@
-import {FatalTaskError} from './FatalTaskError';
+import {FatalTaskError} from './FatalTaskError.mjs';
 
 /**
  * AbortTaskError is a special control error which tells Worker to stop the task.
