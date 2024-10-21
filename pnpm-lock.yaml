@@ -23,6 +23,9 @@ importers:
       tslib:
         specifier: ^2.6.3
         version: 2.6.3
+      typed-emitter:
+        specifier: ^2.1.0
+        version: 2.1.0
     devDependencies:
       '@stylistic/eslint-plugin':
         specifier: ^2.4.0
@@ -99,9 +102,6 @@ importers:
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@18.19.43)(typescript@5.5.4)
-      typed-emitter:
-        specifier: ^2.1.0
-        version: 2.1.0
       typedoc:
         specifier: ^0.26.5
         version: 0.26.5(typescript@5.5.4)
