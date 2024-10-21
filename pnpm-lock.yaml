@@ -9,11 +9,11 @@ importers:
   .:
     dependencies:
       '@avanio/logger-like':
-        specifier: ^0.2.0
-        version: 0.2.0
+        specifier: ^0.2.5
+        version: 0.2.5
       '@avanio/sleep':
-        specifier: ^0.1.2
-        version: 0.1.2
+        specifier: ^0.1.4
+        version: 0.1.4
       cron:
         specifier: ^3.1.7
         version: 3.1.7
@@ -124,11 +124,11 @@ packages:
     resolution: {integrity: sha512-30iZtAPgz+LTIYoeivqYo853f02jBYSd5uGnGpkFV0M3xOt9aN73erkgYAmZU43x4VfqcnLxW9Kpg3R5LC4YYw==}
     engines: {node: '>=6.0.0'}
 
-  '@avanio/logger-like@0.2.0':
-    resolution: {integrity: sha512-eiaYKaICZyhxyW8266L0piKMoUcEAlPCB/Bm0VvNRnuQ8cF85lN3yPJ3onzHRukL/gKg09uGvAbCIm5ZsyJ3PQ==}
+  '@avanio/logger-like@0.2.5':
+    resolution: {integrity: sha512-adNRc+tK/CLLcg7H/8mcr5VrSNr8SD6ib8UI3kXmaTpsAFsRELyH4pN7YSC4KDuEiGCw7Ikuaw4AWQe9fkbxng==}
 
-  '@avanio/sleep@0.1.2':
-    resolution: {integrity: sha512-zGFhi0jlFxIf/00H6CPRvGLhaum9waMcHjuJoUcQbN6+dLqfajny2J6SQVf+te2kd9+kailTJmFg1HsMqzw3Mg==}
+  '@avanio/sleep@0.1.4':
+    resolution: {integrity: sha512-bmYnf6uKKDxx/r2M6uDZpgC3pmlY1OjKivhIknH6uc4lR6H5m+ShxHvzuO2EnNUuBZquJcKFJm70paSoufSjzg==}
 
   '@babel/code-frame@7.24.7':
     resolution: {integrity: sha512-BcYH1CVJBO9tvyIZ2jVeXgSIMvGZ2FDRvDdOIVQyuklNKSsx+eppDEBq/g47Ayw+RqNFE+URvOShmf+f/qwAlA==}
@@ -267,6 +267,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.9':
     resolution: {integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==}
+
+  '@luolapeikko/result-option@1.0.3':
+    resolution: {integrity: sha512-Quq+b6ERUIwCIVvfSW+QQ6w+CNjb2IUkkitAWgpfbBNFrelJV0cI21AlGo6HAcTneNznnoW5To+gxxtLytod+A==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -2398,9 +2401,11 @@ snapshots:
       '@jridgewell/gen-mapping': 0.3.5
       '@jridgewell/trace-mapping': 0.3.25
 
-  '@avanio/logger-like@0.2.0': {}
+  '@avanio/logger-like@0.2.5': {}
 
-  '@avanio/sleep@0.1.2': {}
+  '@avanio/sleep@0.1.4':
+    dependencies:
+      '@luolapeikko/result-option': 1.0.3
 
   '@babel/code-frame@7.24.7':
     dependencies:
@@ -2586,6 +2591,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.0
+
+  '@luolapeikko/result-option@1.0.3': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:

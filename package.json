@@ -76,8 +76,8 @@
 		"uuid": "^10.0.0"
 	},
 	"dependencies": {
-		"@avanio/logger-like": "^0.2.0",
-		"@avanio/sleep": "^0.1.2",
+		"@avanio/logger-like": "^0.2.5",
+		"@avanio/sleep": "^0.1.4",
 		"cron": "^3.1.7",
 		"node-abort-controller": "^3.1.1",
 		"tslib": "^2.6.3",
