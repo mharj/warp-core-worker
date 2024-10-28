@@ -287,6 +287,7 @@ describe('Worker', () => {
 		await worker.restartTask(restartTask);
 		await expect(oldPromise).rejects.toThrowError(buildTaskLog(restartTask, 'restarting'));
 		await expect(worker.waitTask(restartTask)).resolves.toEqual('test1');
+		await worker.deleteTask(restartTask);
 	});
 	it('should get current task with getOrInitializeTask and hook to promise (init)', async function () {
 		// initial data
@@ -300,6 +301,7 @@ describe('Worker', () => {
 		await expect(worker.getOrInitializeTask(oldTask.uuid, 'test2', Test2, {test: 'test'}, {})).rejects.toThrowError(
 			buildTaskLog(task, 'type mismatch, expected type test2'),
 		);
+		await worker.deleteTask(oldTask);
 	});
 	it('should fail to pre-start a task', async function () {
 		worker.setLogMapping({
@@ -320,6 +322,7 @@ describe('Worker', () => {
 		await worker.waitTask(task);
 		expect(task.props.onPreStart).to.be.eq(undefined);
 		expect(spyLogger.debug.args[0][0]).to.be.eq(buildTaskLog(task, 'onPreStart is false, not started'));
+		await worker.deleteTask(task);
 	});
 	it('should get current task with getOrInitializeTask and hook to promise (running)', async function () {
 		// initial data
@@ -331,6 +334,7 @@ describe('Worker', () => {
 		const data = await worker.waitTask(task);
 		expect(data).to.be.eq('test1');
 		expect(worker.getTaskCount()).to.be.eq(1);
+		await worker.deleteTask(oldTask);
 	});
 	it('should get current task with getOrInitializeTask and hook to promise (resolved)', async function () {
 		// initial data
@@ -345,6 +349,7 @@ describe('Worker', () => {
 		const data = await worker.waitTask(task);
 		expect(data).to.be.eq('test1');
 		expect(worker.getTaskCount()).to.be.eq(1);
+		await worker.deleteTask(oldTask);
 	});
 	it('should initialize a task without start', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
@@ -361,6 +366,7 @@ describe('Worker', () => {
 		expect(task.data).to.be.eq('test1');
 		expect(task.taskError).to.be.undefined;
 		expect(worker.getTaskCount()).to.be.eq(1);
+		await worker.deleteTask(task);
 	});
 	it('should initialize a task, start and stop', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
@@ -369,6 +375,7 @@ describe('Worker', () => {
 		await expect(worker.stopTask(task)).resolves.toEqual(undefined);
 		await expect(waitPromise).rejects.toThrowError(`Task ${task.uuid} ${task.type} aborted`);
 		expect(worker.getTaskCount()).to.be.eq(1);
+		await worker.deleteTask(task);
 	});
 	it('should fail to run broken task', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'throw'}, {});
@@ -390,6 +397,7 @@ describe('Worker', () => {
 		expect(task.data).to.be.undefined;
 		expect(task.taskError).to.be.instanceOf(Error);
 		expect(worker.getTaskCount()).to.be.eq(1);
+		await worker.deleteTask(task);
 	});
 	it('should fail on disabled task', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
@@ -403,6 +411,7 @@ describe('Worker', () => {
 		expect(task.props.onRejected).to.be.eq(true);
 		expect(task.props.onResolved).to.be.eq(undefined);
 		expect(worker.getTaskCount()).to.be.eq(1);
+		await worker.deleteTask(task);
 	});
 	it('should initialize interval task', async function () {
 		const task = await worker.initializeTask(Test2, {test: 'test'}, {});
@@ -417,6 +426,7 @@ describe('Worker', () => {
 		await worker.deleteTask(task);
 		expect(await task.getDescription()).to.be.eq('test2 task');
 		expect(worker.getTaskCount()).to.be.eq(0);
+		await worker.deleteTask(task);
 	});
 	it('should initialize cron task', async function () {
 		let task = await worker.initializeTask(Test3, {test: 'test'}, {});
@@ -428,6 +438,7 @@ describe('Worker', () => {
 		await worker.deleteTask(task);
 		expect(await task.getDescription()).to.be.eq('test3 task');
 		expect(worker.getTaskCount()).to.be.eq(0);
+		await worker.deleteTask(task);
 	});
 
 	it('should import task', async function () {
@@ -556,10 +567,14 @@ describe('Worker', () => {
 		expect(data2).to.be.eq('test1');
 
 		await expect(worker.waitTask(task3)).rejects.toThrowError('test');
+		await worker.deleteTask(task1);
+		await worker.deleteTask(task2);
+		await worker.deleteTask(task3);
 	});
 	it('should fail task if cant build task description', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'description-throw'}, {});
 		await expect(worker.waitTask(task)).rejects.toThrowError('description-throw');
+		await worker.deleteTask(task);
 	});
 	it('should update task data outside of instance', async function () {
 		const task = await worker.initializeTask(Test1, {test: 'test'}, {});
@@ -580,6 +595,7 @@ describe('Worker', () => {
 			uuid: task.uuid,
 		});
 		expect(task.disabled).to.be.eq(true);
+		await worker.deleteTask(task);
 	});
 	it('should get task progress events', async function () {
 		vi.useFakeTimers({shouldAdvanceTime: true});
@@ -599,5 +615,6 @@ describe('Worker', () => {
 			{running: 75},
 			{resolved: undefined},
 		]);
+		await worker.deleteTask(task);
 	});
 });

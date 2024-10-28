@@ -417,9 +417,27 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			clearInterval(instance.intervalRef);
 			instance.intervalRef = undefined;
 		}
+		if (!instance.promise.isDone) {
+			try {
+				await instance.promise; // wait promise to be resolved/rejected
+			} catch (_err) {
+				// ignore abort error
+			}
+		}
+		if (!instance.promiseOnce.isDone) {
+			try {
+				await instance.promiseOnce; // wait promise to be resolved/rejected
+			} catch (_err) {
+				// ignore abort error
+			}
+		}
 		this.logKey('delete', instance, 'deleted');
 		this.tasks.delete(task.uuid);
 		this.emit('deleteTask', instance.task as TI);
+	}
+
+	public async close(): Promise<void> {
+		await Promise.all([...this.tasks.values()].map((instance) => this.deleteTask(instance.task)));
 	}
 
 	/**
