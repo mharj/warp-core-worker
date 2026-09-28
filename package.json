@@ -32,6 +32,7 @@
 		"runner"
 	],
 	"author": "mharj",
+	"repository": "github:mharj/warp-core-worker",
 	"license": "MIT",
 	"devDependencies": {
 		"@avanio/logger-like": "^0.2.13",
