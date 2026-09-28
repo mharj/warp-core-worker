@@ -2,40 +2,30 @@
 	"name": "warp-core-worker",
 	"version": "0.2.6",
 	"description": "task runner which can run instant and timed tasks",
-	"main": "./dist/index.js",
+	"main": "./dist/index.cjs",
+	"module": "./dist/index.mjs",
+	"types": "./dist/index.d.mts",
+	"exports": {
+		"import": {
+			"types": "./dist/index.d.mts",
+			"default": "./dist/index.mjs"
+		},
+		"require": {
+			"types": "./dist/index.d.cts",
+			"default": "./dist/index.cjs"
+		},
+		"default": "./dist/index.mjs"
+	},
 	"scripts": {
-		"doc": "typedoc --plugin typedoc-plugin-mermaid",
-		"build": "tsc",
-		"test": "nyc mocha src",
-		"validate": "tsc --noEmit --project tsconfig.test.json",
-		"lint": "eslint --ext .ts src"
+		"doc": "typedoc",
+		"build": "tsdown src/index.ts --format cjs,esm --dts --clean -c tsconfig.build.json",
+		"test": "vitest test --run --no-isolate --coverage",
+		"validate": "tsc --noEmit",
+		"lint": "biome check"
 	},
 	"files": [
 		"dist"
 	],
-	"mocha": {
-		"exit": true,
-		"extension": [
-			"ts",
-			"js"
-		],
-		"recursive": true,
-		"require": [
-			"ts-node/register",
-			"source-map-support/register"
-		],
-		"reporters": [
-			"spec",
-			"mocha-junit-reporter"
-		]
-	},
-	"nyc": {
-		"check-coverage": true,
-		"extension": [
-			".ts",
-			".js"
-		]
-	},
 	"keywords": [
 		"task",
 		"async",
@@ -44,43 +34,29 @@
 	"author": "mharj",
 	"license": "MIT",
 	"devDependencies": {
-		"@stylistic/eslint-plugin": "^2.4.0",
-		"@stylistic/eslint-plugin-ts": "^2.9.0",
-		"@types/chai": "^4.3.17",
-		"@types/chai-as-promised": "^7.1.8",
-		"@types/mocha": "^10.0.7",
-		"@types/node": "^18.19.43",
-		"@types/sinon": "^17.0.3",
-		"@types/uuid": "^10.0.0",
-		"@typescript-eslint/eslint-plugin": "^8.0.0",
-		"@typescript-eslint/parser": "^8.0.0",
-		"chai": "^4.5.0",
-		"chai-as-promised": "^7.1.2",
-		"eslint": "^8.57.0",
-		"eslint-config-prettier": "^9.1.0",
-		"eslint-config-standard": "^17.1.0",
-		"eslint-import-resolver-typescript": "^3.6.1",
-		"eslint-plugin-deprecation": "^3.0.0",
-		"eslint-plugin-import": "^2.29.1",
-		"eslint-plugin-prettier": "^5.2.1",
-		"eslint-plugin-sonarjs": "^0.24.0",
-		"mermaid": "^10.9.1",
-		"mocha": "^10.7.0",
-		"nyc": "^17.0.0",
-		"prettier": "^3.3.3",
-		"sinon": "^18.0.0",
-		"ts-node": "^10.9.2",
-		"typedoc": "^0.26.5",
-		"typedoc-plugin-mermaid": "^1.12.0",
-		"typescript": "^5.5.4",
-		"uuid": "^10.0.0"
-	},
-	"dependencies": {
-		"@avanio/logger-like": "^0.2.5",
-		"@avanio/sleep": "^0.1.4",
-		"cron": "^3.1.7",
+		"@avanio/logger-like": "^0.2.13",
+		"@biomejs/biome": "^2.5.14",
+		"@luolapeikko/sleep": "^0.3.1",
+		"@open-draft/deferred-promise": "^3.0.0",
+		"@types/node": "^24.13.6",
+		"@vitest/coverage-v8": "^5.0.1",
+		"c8": "^12.0.0",
+		"cron": "^4.4.0",
 		"node-abort-controller": "^3.1.1",
-		"tslib": "^2.6.3",
-		"typed-emitter": "^2.1.0"
-	}
+		"tsdown": "^0.23.0",
+		"tslib": "^2.8.1",
+		"typedoc": "^0.28.20",
+		"typescript": "^6.0.3",
+		"uuid": "^14.0.2",
+		"vite": "^8.3.0",
+		"vitest": "^5.0.1"
+	},
+	"peerDependencies": {
+		"@avanio/logger-like": ">=0.2.0",
+		"@luolapeikko/sleep": ">=0.3.0",
+		"@open-draft/deferred-promise": ">=3.0.0",
+		"cron": ">=4.0.0",
+		"node-abort-controller": ">=3.1.1"
+	},
+	"packageManager": "pnpm@12.6.0+sha512.3ef68f951cb111ac204b4a5a16f0b2ddf0da56a96e0413e81d855d9f0b55ef926714709028e1cd00c405c2c5fb7b9e8ec4dc46777c805d0373c2f2ff00fd20ec"
 }

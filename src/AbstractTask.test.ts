@@ -1,15 +1,8 @@
-/* eslint-disable @typescript-eslint/no-unused-expressions */
-/* eslint-disable no-unused-expressions */
-import * as chai from 'chai';
-import 'mocha';
-import * as chaiAsPromised from 'chai-as-promised';
+import {describe, expect, it, vi} from 'vitest';
 import {AbstractSimpleTask} from './AbstractTask';
-import {type TTaskProps} from './types/TaskProps';
+import type {TTaskProps} from './types/TaskProps';
 import {TaskStatusType} from './types/TaskStatus';
-import {type TaskTrigger} from './types/TaskTrigger';
-
-chai.use(chaiAsPromised);
-const expect = chai.expect;
+import type {TaskTrigger} from './types/TaskTrigger';
 
 class TestTask extends AbstractSimpleTask<'test', TTaskProps, void, {owner: string}> {
 	public readonly type = 'test';
@@ -52,10 +45,10 @@ describe('Test', function () {
 		expect(await taskInstance.retry()).to.be.false;
 		expect(await taskInstance.allowRestart()).to.be.false;
 	});
-	it('should emit events', function (done) {
-		taskInstance.onUpdate(() => {
-			done();
-		});
+	it('should emit events', function () {
+		const onUpdate = vi.fn();
+		taskInstance.onUpdate(onUpdate);
 		taskInstance.update();
+		expect(onUpdate).toHaveBeenCalledOnce();
 	});
 });

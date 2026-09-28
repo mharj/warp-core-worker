@@ -1,23 +1,20 @@
-import * as EventEmitter from 'events';
-import {type ILoggerLike} from '@avanio/logger-like';
-import type TypedEmitter from 'typed-emitter';
-import {type ITaskInstance} from './interfaces/ITask';
-import {type TaskParams} from './types/TaskParams';
-import {type TTaskProps} from './types/TaskProps';
-import {type TaskStatusType} from './types/TaskStatus';
-import {type TaskTrigger} from './types/TaskTrigger';
+import type {ILoggerLike} from '@avanio/logger-like';
+import {EventEmitter} from 'events';
+import type {ITaskInstance} from './interfaces/ITask';
+import type {TaskParams} from './types/TaskParams';
+import type {TTaskProps} from './types/TaskProps';
+import type {TaskStatusType} from './types/TaskStatus';
+import type {TaskTrigger} from './types/TaskTrigger';
 
 /**
  * Worker EventEmitter events
  */
-export type TaskEvents = {
-	update: () => void;
+export type TypedTaskEvents = {
+	update: [];
 };
 
-export type TypedTaskEvents = TypedEmitter<TaskEvents>;
-
 export abstract class AbstractSimpleTask<TaskType extends string, TaskProps extends TTaskProps, ReturnType, CommonTaskContext>
-	extends (EventEmitter as new () => TypedTaskEvents)
+	extends EventEmitter<TypedTaskEvents>
 	implements ITaskInstance<TaskType, TaskProps, ReturnType, CommonTaskContext>
 {
 	public readonly uuid: string;
@@ -46,7 +43,12 @@ export abstract class AbstractSimpleTask<TaskType extends string, TaskProps exte
 	private description?: string | Promise<string>;
 	public progress: number | undefined;
 
-	constructor(params: TaskParams<TaskProps, CommonTaskContext>, data: ReturnType | undefined, abortSignal: AbortSignal, logger: ILoggerLike | undefined) {
+	public constructor(
+		params: TaskParams<TaskProps, CommonTaskContext>,
+		data: ReturnType | undefined,
+		abortSignal: AbortSignal,
+		logger: ILoggerLike | undefined,
+	) {
 		super();
 		this.uuid = params.uuid;
 		this.props = params.props;

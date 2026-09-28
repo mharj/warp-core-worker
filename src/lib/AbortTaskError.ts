@@ -5,7 +5,7 @@ import {FatalTaskError} from './FatalTaskError';
  * It is not considered as a fatal error, but a controlled stop.
  */
 export class AbortTaskError extends FatalTaskError {
-	constructor(message: string) {
+	public constructor(message: string) {
 		super(message);
 		this.name = 'AbortTaskError';
 	}

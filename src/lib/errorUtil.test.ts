@@ -1,8 +1,5 @@
-import * as chai from 'chai';
-import 'mocha';
+import {describe, expect, it} from 'vitest';
 import {haveError} from './errorUtil';
-
-const expect = chai.expect;
 
 describe('error util', function () {
 	it('should check if have Error instance', function () {

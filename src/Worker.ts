@@ -1,31 +1,47 @@
-import * as EventEmitter from 'events';
-import {type ILoggerLike, LogLevel, type LogMapping, MapLogger} from '@avanio/logger-like';
-import {sleep} from '@avanio/sleep';
+import {type ILoggerLike, LogLevel, type LogLevelValue, MapLogger} from '@avanio/logger-like';
+import {sleep} from '@luolapeikko/sleep';
+import {DeferredPromise} from '@open-draft/deferred-promise';
 import * as Cron from 'cron';
-import type TypedEmitter from 'typed-emitter';
+import {EventEmitter} from 'events';
 import type {ITaskConstructorInferFromInstance, ITaskInstance} from './interfaces/ITask';
 import {AbortTaskError} from './lib/AbortTaskError';
-import {DeferredPromise} from './lib/DeferredPromise';
 import {haveError} from './lib/errorUtil';
-import {FatalTaskError, buildFatalError} from './lib/FatalTaskError';
+import {buildFatalError, FatalTaskError} from './lib/FatalTaskError';
 import {TaskDisabledError} from './lib/TaskDisabledError';
-import {type TaskLogFunction, buildTaskLog} from './lib/taskLog';
 import {TaskRetryError} from './lib/TaskRetryError';
+import {buildTaskLog, type TaskLogFunction} from './lib/taskLog';
 import type {InferDataFromInstance} from './types/TaskData';
 import type {TTaskProps} from './types/TaskProps';
-import {TaskStatusType, getTaskStatusString, isEndState, isRunningState, isStartState} from './types/TaskStatus';
+import {getTaskStatusString, isEndState, isRunningState, isStartState, TaskStatusType} from './types/TaskStatus';
 
 /**
  * Worker EventEmitter events
  */
 export type WorkerEvents<TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = {
-	import: (task: TI[]) => void;
-	addTask: (task: TI) => void;
-	updateTask: (task: TI) => void;
-	deleteTask: (task: TI) => void;
+	import: [task: TI[]];
+	addTask: [task: TI];
+	updateTask: [task: TI];
+	deleteTask: [task: TI];
 };
 
-export const defaultLogMap = {
+export type TaskWorkerLogMapping = {
+	abort: LogLevelValue;
+	delete: LogLevelValue;
+	flow_abort: LogLevelValue;
+	flow_error: LogLevelValue;
+	flow_limit: LogLevelValue;
+	flow_retry: LogLevelValue;
+	flow_sleep: LogLevelValue;
+	not_start: LogLevelValue;
+	rejected: LogLevelValue;
+	resolved: LogLevelValue;
+	start: LogLevelValue;
+	status_change_default: LogLevelValue;
+	status_change_error: LogLevelValue;
+	status_change_info: LogLevelValue;
+};
+
+export const defaultLogMap: TaskWorkerLogMapping = {
 	abort: LogLevel.Info,
 	delete: LogLevel.Error,
 	flow_abort: LogLevel.None,
@@ -41,8 +57,6 @@ export const defaultLogMap = {
 	status_change_error: LogLevel.None,
 	status_change_info: LogLevel.None,
 };
-
-export type TaskWorkerLogMapping = LogMapping<keyof typeof defaultLogMap>; // build type
 
 export type FullTaskInstance<ReturnType, TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = ITaskInstance<
 	TI['type'],
@@ -68,15 +82,19 @@ export interface TaskWorkerInstance<TI extends ITaskInstance<string, TTaskProps,
 	abortController: AbortController;
 	type: TI['type'];
 	task: TI;
+	/**
+	 * Promise which hooks the entire lifecycle of the task instance
+	 */
 	promise: DeferredPromise<unknown>;
+	/**
+	 * Promise which hooks one run for the task instance
+	 */
 	promiseOnce: DeferredPromise<unknown>;
 	cron?: Cron.CronJob;
 	intervalRef?: ReturnType<typeof setInterval>;
 }
 
-export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>> extends (EventEmitter as {
-	new <CommonTaskContext, TI extends ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>>(): TypedEmitter<WorkerEvents<TI>>;
-})<CommonTaskContext, TI> {
+export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>> extends EventEmitter<WorkerEvents<TI>> {
 	private buildTaskUniqueId: () => string;
 	private tasks = new Map<string, TaskWorkerInstance<FullTaskInstance<unknown, TI>>>();
 	private logger: MapLogger<TaskWorkerLogMapping>;
@@ -84,7 +102,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 
 	private stepFlowDelay: number;
 
-	constructor(opts: WorkerOptions, logMapping?: Partial<TaskWorkerLogMapping>) {
+	public constructor(opts: WorkerOptions, logMapping?: Partial<TaskWorkerLogMapping>) {
 		super();
 		this.buildTaskUniqueId = opts.taskUniqueIdBuilder;
 		this.stepFlowDelay = opts.stepFlowDelay || 0;
@@ -243,7 +261,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			this.setTaskStatus(currentWorkerInstance, classInstance.status).catch((err) => this.handleReject(currentWorkerInstance, err)); // trigger status change after reset (async, not wait here)
 		}
 		// handle task promises if task is already resolved/rejected
-		if (currentWorkerInstance.task.trigger.type === 'instant' && !currentWorkerInstance.promise.isDone) {
+		if (currentWorkerInstance.task.trigger.type === 'instant' && currentWorkerInstance.promise.state === 'pending') {
 			if (currentWorkerInstance.task.status === TaskStatusType.Resolved) {
 				currentWorkerInstance.promise.resolve(currentWorkerInstance.task.data);
 			}
@@ -336,7 +354,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		if (isRunningState(instance.task.status)) {
 			throw new FatalTaskError(this.buildLog(instance.task, 'is already running'));
 		}
-		if (!instance.promise.isDone) {
+		if (instance.promise.state === 'pending') {
 			instance.promise.reject(new Error(this.buildLog(instance.task, 'restarting'))); // throw error to reject old promise if someone is waiting for it
 		}
 		this.resetTaskInstance(instance);
@@ -396,7 +414,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * stop currently running task and wait for it to resolved/rejected
 	 * @param task
 	 */
-	public async stopTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<void> {
+	public stopTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<void> {
 		const instance = this.tasks.get(task.uuid);
 		this.assertInstance(instance, task.uuid);
 		return this.handleStopTask(instance);
@@ -472,7 +490,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		instance.abortController.abort();
 		// trigger promise reject (Abort) if task is not resolved/rejected yet and use runTaskErrorHandler to handle it
 		try {
-			if (!instance.promise.isDone) {
+			if (instance.promise.state === 'pending') {
 				this.assertIfAbort(instance);
 			}
 		} catch (err) {
@@ -504,11 +522,12 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	private resetTaskInstance(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): void {
 		instance.abortController = new AbortController(); // reset abort controller
 		// reset promise
-		if (instance.task.trigger.type === 'instant' && !instance.promise.isDone) {
+		if (instance.task.trigger.type === 'instant' && instance.promise.state === 'pending') {
 			// istanbul ignore next
 			instance.promise.reject(new Error(this.buildLog(instance.task, 'reset'))); // throw error to reject old promise if someone is waiting for it
 		}
 		instance.promise = new DeferredPromise<unknown>(); // reset promise
+		instance.promise.catch(() => {}); // prevent unhandled rejection before a real consumer subscribes
 		instance.task.start = undefined; // reset start
 		instance.task.end = undefined; // reset end
 		instance.task.status = TaskStatusType.Init; // reset status
@@ -603,7 +622,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	private async runTask(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
 		let isTaskRetired = false;
 		while (!isTaskRetired) {
-			if (instance.promise.isDone) {
+			if (instance.promise.state === 'fulfilled' || instance.promise.state === 'rejected') {
 				return; // task is already resolved/rejected, don't run it again (i.e. external Abort etc.)
 			}
 			try {
@@ -623,7 +642,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * @returns true if task should be retried
 	 */
 	private async runTaskErrorHandler(instance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>, err: unknown): Promise<boolean> {
-		if (instance.promise.isDone) {
+		if (instance.promise.state === 'fulfilled' || instance.promise.state === 'rejected') {
 			// istanbul ignore next
 			return false; // task is already resolved/rejected, we don't try to handle it again (this might happen if task is aborted externally while running)
 		}
@@ -645,6 +664,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			// throw once and create new promise for retry
 			instance.promiseOnce.reject(new TaskRetryError(this.buildLog(instance.task, 'failed, retrying'), instance.task.errorCount)); // reject once promise
 			instance.promiseOnce = new DeferredPromise<unknown>(); // reset once promise
+			instance.promiseOnce.catch(() => {}); // prevent unhandled rejection before a real consumer subscribes
 			this.logKey('flow_retry', instance, `retry: ${haveError(err).message}`);
 			const sleepTime = await instance.task.onErrorSleep();
 			await sleep(this.stepFlowDelay, {signal: instance.abortController.signal});
@@ -775,10 +795,14 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		abortController: AbortController,
 		task: FullTaskInstance<ReturnType, TI>,
 	): TaskWorkerInstance<FullTaskInstance<ReturnType, TI>> {
+		const promise = new DeferredPromise<unknown>();
+		const promiseOnce = new DeferredPromise<unknown>();
+		promise.catch(() => {}); // prevent unhandled rejection before a real consumer subscribes
+		promiseOnce.catch(() => {}); // prevent unhandled rejection before a real consumer subscribes
 		return {
 			abortController,
-			promise: new DeferredPromise<unknown>(),
-			promiseOnce: new DeferredPromise<unknown>(),
+			promise,
+			promiseOnce,
 			task,
 			type: task.type,
 		};
@@ -817,8 +841,9 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		return this.notifyTaskUpdate(workerInstance);
 	}
 
-	private async notifyTaskUpdate(workerInstance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
+	private notifyTaskUpdate(workerInstance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>): Promise<void> {
 		this.emit('updateTask', workerInstance.task as TI);
+		return Promise.resolve();
 	}
 
 	/**

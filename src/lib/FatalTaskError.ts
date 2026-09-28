@@ -4,7 +4,7 @@ import {buildErrorString} from './errorUtil';
  * FatalTaskError is a special control error which tells Worker to stop re-try and fail the task.
  */
 export class FatalTaskError extends Error {
-	constructor(message: string) {
+	public constructor(message: string) {
 		super(message);
 		this.name = 'FatalTaskError';
 	}

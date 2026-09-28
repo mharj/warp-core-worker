@@ -1,8 +1,5 @@
-import * as chai from 'chai';
-import 'mocha';
-import {FatalTaskError, buildFatalError} from './FatalTaskError';
-
-const expect = chai.expect;
+import {describe, expect, it} from 'vitest';
+import {buildFatalError, FatalTaskError} from './FatalTaskError';
 
 describe('fatal task error', function () {
 	it('should check if have FatalTaskError instance', function () {

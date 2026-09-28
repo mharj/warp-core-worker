@@ -3,19 +3,20 @@
  * @see {@link TaskStatusTextType}.
  * @see {@link getTaskStatusString}.
  */
-export const enum TaskStatusType {
+export const TaskStatusType = {
 	// start states 0-9
-	Created = 0,
-	Init = 1,
-	Pending = 2,
+	Created: 0,
+	Init: 1,
+	Pending: 2,
 	// running states 10-19
-	Starting = 10,
-	Running = 11,
+	Starting: 10,
+	Running: 11,
 	// final states 90-99
-	Aborted = 97,
-	Resolved = 99,
-	Rejected = 98,
-}
+	Aborted: 97,
+	Resolved: 99,
+	Rejected: 98,
+} as const;
+export type TaskStatusType = (typeof TaskStatusType)[keyof typeof TaskStatusType];
 
 /**
  * Task status text constants.
