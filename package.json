@@ -32,7 +32,10 @@
 		"runner"
 	],
 	"author": "mharj",
-	"repository": "github:mharj/warp-core-worker",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mharj/warp-core-worker.git"
+	},
 	"license": "MIT",
 	"devDependencies": {
 		"@avanio/logger-like": "^0.2.13",
