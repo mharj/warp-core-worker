@@ -124,7 +124,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 
 	/**
 	 * Change {@link KeyLogger} log mapping.
-	 * @param logMap 
+	 * @param logMap
 	 */
 	public setLogMapping(logMap: Partial<TaskWorkerLogMapping>): void {
 		this.keyLogger.logMap = logMap;

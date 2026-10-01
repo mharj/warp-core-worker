@@ -15,7 +15,7 @@
       "undefined": "https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/undefined"
     },
     "@luolapeikko/key-logger": {
-      "KeyLogger": "https://luolapeikko.github.io/logger-suite/classes/_luolapeikko_key-logger.KeyLogger.html" 
+      "KeyLogger": "https://luolapeikko.github.io/logger-suite/classes/_luolapeikko_key-logger.KeyLogger.html"
     }
   },
   "out": "docs"
