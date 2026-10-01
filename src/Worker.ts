@@ -1,4 +1,6 @@
-import {type ILoggerLike, LogLevel, type LogLevelValue, MapLogger} from '@avanio/logger-like';
+import {KeyLogger} from '@luolapeikko/key-logger';
+import type {ILoggerLike} from '@luolapeikko/logger-type';
+import type {LogLevelType} from '@luolapeikko/loglevel-type';
 import {sleep} from '@luolapeikko/sleep';
 import {DeferredPromise} from '@open-draft/deferred-promise';
 import * as Cron from 'cron';
@@ -25,38 +27,38 @@ export type WorkerEvents<TI extends ITaskInstance<string, TTaskProps, unknown, u
 };
 
 export type TaskWorkerLogMapping = {
-	abort: LogLevelValue;
-	delete: LogLevelValue;
-	flow_abort: LogLevelValue;
-	flow_error: LogLevelValue;
-	flow_limit: LogLevelValue;
-	flow_retry: LogLevelValue;
-	flow_sleep: LogLevelValue;
-	not_start: LogLevelValue;
-	rejected: LogLevelValue;
-	resolved: LogLevelValue;
-	start: LogLevelValue;
-	status_change_default: LogLevelValue;
-	status_change_error: LogLevelValue;
-	status_change_info: LogLevelValue;
+	abort: LogLevelType;
+	delete: LogLevelType;
+	flow_abort: LogLevelType;
+	flow_error: LogLevelType;
+	flow_limit: LogLevelType;
+	flow_retry: LogLevelType;
+	flow_sleep: LogLevelType;
+	not_start: LogLevelType;
+	rejected: LogLevelType;
+	resolved: LogLevelType;
+	start: LogLevelType;
+	status_change_default: LogLevelType;
+	status_change_error: LogLevelType;
+	status_change_info: LogLevelType;
 };
 
 export const defaultLogMap: TaskWorkerLogMapping = {
-	abort: LogLevel.Info,
-	delete: LogLevel.Error,
-	flow_abort: LogLevel.None,
-	flow_error: LogLevel.None,
-	flow_limit: LogLevel.None,
-	flow_retry: LogLevel.None,
-	flow_sleep: LogLevel.None,
-	not_start: LogLevel.None,
-	rejected: LogLevel.Error,
-	resolved: LogLevel.Info,
-	start: LogLevel.Debug,
-	status_change_default: LogLevel.None,
-	status_change_error: LogLevel.None,
-	status_change_info: LogLevel.None,
-};
+	abort: 'info',
+	delete: 'error',
+	flow_abort: 'none',
+	flow_error: 'none',
+	flow_limit: 'none',
+	flow_retry: 'none',
+	flow_sleep: 'none',
+	not_start: 'none',
+	rejected: 'error',
+	resolved: 'info',
+	start: 'debug',
+	status_change_default: 'none',
+	status_change_error: 'none',
+	status_change_info: 'none',
+} as const;
 
 export type FullTaskInstance<ReturnType, TI extends ITaskInstance<string, TTaskProps, unknown, unknown>> = ITaskInstance<
 	TI['type'],
@@ -97,7 +99,7 @@ export interface TaskWorkerInstance<TI extends ITaskInstance<string, TTaskProps,
 export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskProps, unknown, CommonTaskContext>> extends EventEmitter<WorkerEvents<TI>> {
 	private buildTaskUniqueId: () => string;
 	private tasks = new Map<string, TaskWorkerInstance<FullTaskInstance<unknown, TI>>>();
-	private logger: MapLogger<TaskWorkerLogMapping>;
+	private keyLogger: KeyLogger<TaskWorkerLogMapping>;
 	private buildLog: TaskLogFunction;
 
 	private stepFlowDelay: number;
@@ -107,22 +109,25 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 		this.buildTaskUniqueId = opts.taskUniqueIdBuilder;
 		this.stepFlowDelay = opts.stepFlowDelay || 0;
 		this.buildLog = opts.logFunction || buildTaskLog;
-		this.logger = new MapLogger(opts.logger, Object.assign({}, defaultLogMap, logMapping));
+		this.keyLogger = new KeyLogger(Object.assign({}, defaultLogMap, logMapping), opts.logger);
 	}
 
 	/**
-	 * set logger instance (or change it if already set on constructor)
+	 * Set {@link KeyLogger} logger instance (or change it if already set on constructor)
 	 * @param logger any common logger instance (console, log4js, winston, etc.)
-	 * @see {@link https://www.npmjs.com/package/@avanio/logger-like | @avanio/logger-like} for more info.
 	 * @example
 	 * worker.setLogger(console);
 	 */
 	public addLogger(logger: ILoggerLike): void {
-		this.logger.setLogger(logger);
+		this.keyLogger.logger = logger;
 	}
 
+	/**
+	 * Change {@link KeyLogger} log mapping.
+	 * @param logMap 
+	 */
 	public setLogMapping(logMap: Partial<TaskWorkerLogMapping>): void {
-		this.logger.setLogMapping(logMap);
+		this.keyLogger.logMap = logMap;
 	}
 
 	/**
@@ -140,7 +145,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * @param TaskClass Task class
 	 * @param props Task constructor properties
 	 * @param commonContext Common context (all tasks shared this context type)
-	 * @returns Task class instance
+	 * @returns {Promise<FullTaskInstance<CType['data'], CType>>} A {@link Promise} of created task instance.
 	 * @example
 	 * const task = await worker.initializeTask(MyTask, {prop1: 'value1'}, {common: 'context'});
 	 */
@@ -166,7 +171,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			},
 			undefined,
 			abortController.signal,
-			this.logger,
+			this.keyLogger,
 		);
 		if (classInstance.singleInstance) {
 			const existingTask = this.lookupSingleInstanceTask(classInstance);
@@ -193,7 +198,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * @param TaskClass Task class
 	 * @param props Task props
 	 * @param commonContext Common context
-	 * @returns return new Task class instance or existing task instance
+	 * @returns A {@link Promise} of the task instance, either newly created or existing.
 	 * @example
 	 * const task = await worker.getOrInitializeTask(oldTaskUuid, 'type', MyTask, {prop1: 'value1'}, {common: 'context'});
 	 */
@@ -237,7 +242,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			},
 			data,
 			abortController.signal,
-			this.logger,
+			this.keyLogger,
 		);
 		if (classInstance.trigger.type !== 'instant') {
 			classInstance.status = TaskStatusType.Created; // set status to created if task is not instant (allow to start)
@@ -279,7 +284,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * Start this task instance.
 	 * @throws {FatalTaskError} if task is already started
 	 * @param task Task instance
-	 * @returns Promise that will be resolved when task is started
+	 * @returns {Promise<void>} A {@link Promise} that will be resolved when the task is started.
 	 * @example
 	 * await worker.startTask(task);
 	 */
@@ -299,7 +304,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * @throws {FatalTaskError} if task is not instant
 	 * @throws {FatalTaskError} if task is already started
 	 * @param {FullTaskInstance<ReturnType, TI>} task Task instance
-	 * @returns {Promise<ReturnType> } Promise of current task data
+	 * @returns {Promise<ReturnType> } A {@link Promise} of current task data
 	 */
 	public async waitTask<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<ReturnType> {
 		const instance = this.tasks.get(task.uuid);
@@ -322,7 +327,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 * @throws {FatalTaskError} if task is already started
 	 * @throws {TaskRetryError} if task will be retried and continue to next retry run
 	 * @param {FullTaskInstance<ReturnType, TI>} task Task instance
-	 * @returns {Promise<ReturnType> } Promise of single run task data
+	 * @returns {Promise<ReturnType> } A {@link Promise} of single run task data
 	 */
 	public async waitTaskRun<ReturnType>(task: FullTaskInstance<ReturnType, TI>): Promise<ReturnType> {
 		const instance = this.tasks.get(task.uuid);
@@ -460,7 +465,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			for (const currentWorkerInstance of taskInstances) {
 				// revert status to pending if task was on running state
 				if (isRunningState(currentWorkerInstance.task.status)) {
-					this.logger.debug(this.buildLog(currentWorkerInstance.task, 'restart on import'));
+					this.keyLogger.debug(this.buildLog(currentWorkerInstance.task, 'restart on import'));
 					currentWorkerInstance.task.start = undefined; // reset start
 					currentWorkerInstance.task.end = undefined; // reset end
 					await this.setTaskStatus(currentWorkerInstance, TaskStatusType.Pending); // change status to pending
@@ -470,7 +475,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 			this.emit('import', taskInstances.map((instance) => instance.task) as TI[]);
 		} catch (err) {
 			// istanbul ignore next
-			this.logger.error(`Task import error: ${haveError(err)}`);
+			this.keyLogger.error(`Task import error: ${haveError(err)}`);
 		}
 	}
 
@@ -852,7 +857,7 @@ export class Worker<CommonTaskContext, TI extends ITaskInstance<string, TTaskPro
 	 */
 	private logKey(key: keyof TaskWorkerLogMapping, workerInstance: TaskWorkerInstance<FullTaskInstance<unknown, TI>>, message: string): string {
 		const out = this.buildLog(workerInstance.task, message);
-		this.logger.logKey(key, out);
+		this.keyLogger.key(key, out);
 		return out;
 	}
 

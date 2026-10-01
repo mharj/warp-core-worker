@@ -166,15 +166,21 @@ importers:
 
   .:
     devDependencies:
-      '@avanio/logger-like':
-        specifier: ^0.2.13
-        version: 0.2.13
       '@biomejs/biome':
         specifier: ^2.5.14
         version: 2.5.14
+      '@luolapeikko/key-logger':
+        specifier: ^0.1.0
+        version: 0.1.0(@luolapeikko/logger-type@0.1.0)(@luolapeikko/loglevel-type@0.1.0)
+      '@luolapeikko/logger-type':
+        specifier: ^0.1.0
+        version: 0.1.0
+      '@luolapeikko/loglevel-type':
+        specifier: ^0.1.0
+        version: 0.1.0
       '@luolapeikko/sleep':
-        specifier: ^0.3.1
-        version: 0.3.1(@luolapeikko/result-option@1.0.3)(@opentelemetry/api@1.9.1)
+        specifier: ^0.4.2
+        version: 0.4.2
       '@open-draft/deferred-promise':
         specifier: ^3.0.0
         version: 3.0.0
@@ -190,9 +196,6 @@ importers:
       cron:
         specifier: ^4.4.0
         version: 4.4.0
-      node-abort-controller:
-        specifier: ^3.1.1
-        version: 3.1.1
       tsdown:
         specifier: ^0.23.0
         version: 0.23.0(typescript@6.0.3)
@@ -202,6 +205,12 @@ importers:
       typedoc:
         specifier: ^0.28.20
         version: 0.28.20(typescript@6.0.3)
+      typedoc-plugin-dt-links:
+        specifier: ^2.0.74
+        version: 2.0.74(typedoc@0.28.20(typescript@6.0.3))
+      typedoc-plugin-mdn-links:
+        specifier: ^5.1.1
+        version: 5.1.1(typedoc@0.28.20(typescript@6.0.3))
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -216,9 +225,6 @@ importers:
         version: 5.0.2(@opentelemetry/api@1.9.1)(@types/node@24.13.6)(@vitest/coverage-v8@5.0.2)(vite@8.3.1(@types/node@24.13.6)(yaml@2.5.0))
 
 packages:
-
-  '@avanio/logger-like@0.2.13':
-    resolution: {integrity: sha512-B4SFzAOFwkLh8OgFJlDmb+/iVOe1L5PVnk9AdBMO0VIXo/lEgcA38MS4bBWm1FCnA9DZcetG9/AufT01QJBcnw==}
 
   '@babel/helper-string-parser@7.29.7':
     resolution: {integrity: sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==}
@@ -321,15 +327,21 @@ packages:
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
 
-  '@luolapeikko/result-option@1.0.3':
-    resolution: {integrity: sha512-Quq+b6ERUIwCIVvfSW+QQ6w+CNjb2IUkkitAWgpfbBNFrelJV0cI21AlGo6HAcTneNznnoW5To+gxxtLytod+A==}
-
-  '@luolapeikko/sleep@0.3.1':
-    resolution: {integrity: sha512-L/Kvpd01qPE+xyEnI+Sud3TPoJTKKLB26GBAFAOUbQLfiIbpe7q+DfGx5cZJ0LYm+A4Y8+vTnydstJ+sQd43lA==}
-    engines: {node: '>=16.9.0'}
+  '@luolapeikko/key-logger@0.1.0':
+    resolution: {integrity: sha512-xGULpOsO40CIdzIwWUYJW7yKJNBaez105NPHEfcyUkQJLBfpOFKroWpIsrk+ZIKQR5VVv6DCMaFDDGPkMbfIjQ==}
     peerDependencies:
-      '@luolapeikko/result-option': '>=1.0'
-      '@opentelemetry/api': ^1.9
+      '@luolapeikko/logger-type': '>= 0.1.0'
+      '@luolapeikko/loglevel-type': '>= 0.1.0'
+
+  '@luolapeikko/logger-type@0.1.0':
+    resolution: {integrity: sha512-wwdFJGg1sdGTamueJkXjBx2ydEdnp6ec4wj31u6+qtcdAw1PL7d20ZU3KtpqkJ6O75xRvceaVv1sdFC98Hk/2A==}
+
+  '@luolapeikko/loglevel-type@0.1.0':
+    resolution: {integrity: sha512-lDcwAMACcPDFhZQDi05unDmTDhpIMtz/qFE6d3a2QHwGOScoqE/4dLpabaDEwRRtD6aE8Jmp1pj+AQdohPiqzg==}
+
+  '@luolapeikko/sleep@0.4.2':
+    resolution: {integrity: sha512-VRLQqsWJgmhduCRmbBYC2fzUc+ivkSiSZcLuQzsZcTL7xSr3r1azjnonzcRAO2wutK8NwDtsJeoEJLB3xVKXuQ==}
+    engines: {node: '>=16.9.0'}
 
   '@open-draft/deferred-promise@3.0.0':
     resolution: {integrity: sha512-XW375UK8/9SqUVNVa6M0yEy8+iTi4QN5VZ7aZuRFQmy76LRwI9wy5F4YIBU6T+eTe2/DNDo8tqu8RHlwLHM6RA==}
@@ -940,9 +952,6 @@ packages:
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
-  node-abort-controller@3.1.1:
-    resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
-
   obug@2.2.1:
     resolution: {integrity: sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==}
     engines: {node: '>=12.20.0'}
@@ -1120,6 +1129,16 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  typedoc-plugin-dt-links@2.0.74:
+    resolution: {integrity: sha512-BOBLejq1v/zygr+qysMJllHManqG+ojCXT1lrqjzXKMoKpcK/sbSC+JNZwtJ2jRTEXrW1r1ggPoMJ2b9yfgjUw==}
+    peerDependencies:
+      typedoc: 0.28.x
+
+  typedoc-plugin-mdn-links@5.1.1:
+    resolution: {integrity: sha512-fLlYudnlGkE9uspOEm/SBXwr+G0RbxoDZiHAVsCg+5NwKe2aUxjZK1YyQfleNZydImanzkX2oUJF29xbEeOSWw==}
+    peerDependencies:
+      typedoc: 0.27.x || 0.28.x
+
   typedoc@0.28.20:
     resolution: {integrity: sha512-uSKqkh8Cr48vllnEy+jdaAgOeR6Y+QCBW7usgUsKj7gJEfR7stw9U/fE49LBnj2tPRKPY0c0EBJSWe9Appmplg==}
     engines: {node: '>= 18', pnpm: '>= 10'}
@@ -1292,8 +1311,6 @@ packages:
 
 snapshots:
 
-  '@avanio/logger-like@0.2.13': {}
-
   '@babel/helper-string-parser@7.29.7': {}
 
   '@babel/helper-validator-identifier@7.29.7': {}
@@ -1370,16 +1387,21 @@ snapshots:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.6.0
 
-  '@luolapeikko/result-option@1.0.3': {}
-
-  '@luolapeikko/sleep@0.3.1(@luolapeikko/result-option@1.0.3)(@opentelemetry/api@1.9.1)':
+  '@luolapeikko/key-logger@0.1.0(@luolapeikko/logger-type@0.1.0)(@luolapeikko/loglevel-type@0.1.0)':
     dependencies:
-      '@luolapeikko/result-option': 1.0.3
-      '@opentelemetry/api': 1.9.1
+      '@luolapeikko/logger-type': 0.1.0
+      '@luolapeikko/loglevel-type': 0.1.0
+
+  '@luolapeikko/logger-type@0.1.0': {}
+
+  '@luolapeikko/loglevel-type@0.1.0': {}
+
+  '@luolapeikko/sleep@0.4.2': {}
 
   '@open-draft/deferred-promise@3.0.0': {}
 
-  '@opentelemetry/api@1.9.1': {}
+  '@opentelemetry/api@1.9.1':
+    optional: true
 
   '@oxc-project/types@0.150.0': {}
 
@@ -1811,8 +1833,6 @@ snapshots:
 
   nanoid@3.3.19: {}
 
-  node-abort-controller@3.1.1: {}
-
   obug@2.2.1: {}
 
   obug@3.0.0: {}
@@ -1963,6 +1983,14 @@ snapshots:
       - vue-tsc
 
   tslib@2.8.1: {}
+
+  typedoc-plugin-dt-links@2.0.74(typedoc@0.28.20(typescript@6.0.3)):
+    dependencies:
+      typedoc: 0.28.20(typescript@6.0.3)
+
+  typedoc-plugin-mdn-links@5.1.1(typedoc@0.28.20(typescript@6.0.3)):
+    dependencies:
+      typedoc: 0.28.20(typescript@6.0.3)
 
   typedoc@0.28.20(typescript@6.0.3):
     dependencies:

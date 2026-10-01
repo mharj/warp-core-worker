@@ -21,7 +21,7 @@
     "strictNullChecks": true,
     "noUnusedLocals": true,
     "erasableSyntaxOnly": true,
-    "isolatedDeclarations": true
+    "isolatedDeclarations": true,
   },
   "typedocOptions": {
     "entryPoints": ["src/index.ts"],

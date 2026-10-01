@@ -1,4 +1,4 @@
-import type {ILoggerLike} from '@avanio/logger-like';
+import type {ILoggerLike} from '@luolapeikko/logger-type';
 import type {InferParamsFromInstance, TaskParams} from '../types/TaskParams';
 import type {TTaskProps} from '../types/TaskProps';
 import type {TaskTrigger} from '../types/TaskTrigger';

@@ -1,0 +1,2 @@
+minimumReleaseAgeExclude:
+  - '@luolapeikko/sleep@0.4.2'

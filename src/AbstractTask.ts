@@ -1,4 +1,4 @@
-import type {ILoggerLike} from '@avanio/logger-like';
+import type {ILoggerLike} from '@luolapeikko/logger-type';
 import {EventEmitter} from 'events';
 import type {ITaskInstance} from './interfaces/ITask';
 import type {TaskParams} from './types/TaskParams';

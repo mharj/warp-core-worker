@@ -1,4 +1,4 @@
-import {type ILoggerLike, LogLevel} from '@avanio/logger-like';
+import type {ILoggerLike} from '@luolapeikko/logger-type';
 import {sleep} from '@luolapeikko/sleep';
 import {v4 as uuid} from 'uuid';
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest';
@@ -17,20 +17,20 @@ import {
 } from './';
 
 const logMapper: TaskWorkerLogMapping = {
-	abort: LogLevel.Debug,
-	delete: LogLevel.Debug,
-	flow_abort: LogLevel.Debug,
-	flow_error: LogLevel.Debug,
-	flow_limit: LogLevel.Debug,
-	flow_retry: LogLevel.Debug,
-	flow_sleep: LogLevel.Debug,
-	not_start: LogLevel.Debug,
-	rejected: LogLevel.Debug,
-	resolved: LogLevel.Debug,
-	start: LogLevel.Debug,
-	status_change_default: LogLevel.Debug,
-	status_change_error: LogLevel.Debug,
-	status_change_info: LogLevel.Debug,
+	abort: 'debug',
+	delete: 'debug',
+	flow_abort: 'debug',
+	flow_error: 'debug',
+	flow_limit: 'debug',
+	flow_retry: 'debug',
+	flow_sleep: 'debug',
+	not_start: 'debug',
+	rejected: 'debug',
+	resolved: 'debug',
+	start: 'debug',
+	status_change_default: 'debug',
+	status_change_error: 'debug',
+	status_change_info: 'debug',
 };
 
 const spyLogger = {
@@ -293,18 +293,18 @@ describe('Worker', () => {
 	});
 	it('should fail to pre-start a task', async function () {
 		worker.setLogMapping({
-			abort: LogLevel.None,
-			delete: LogLevel.None,
-			flow_error: LogLevel.None,
-			flow_limit: LogLevel.None,
-			flow_retry: LogLevel.None,
-			flow_sleep: LogLevel.None,
-			rejected: LogLevel.None,
-			resolved: LogLevel.None,
-			start: LogLevel.None,
-			status_change_default: LogLevel.None,
-			status_change_error: LogLevel.None,
-			status_change_info: LogLevel.None,
+			abort: 'none',
+			delete: 'none',
+			flow_error: 'none',
+			flow_limit: 'none',
+			flow_retry: 'none',
+			flow_sleep: 'none',
+			rejected: 'none',
+			resolved: 'none',
+			start: 'none',
+			status_change_default: 'none',
+			status_change_error: 'none',
+			status_change_info: 'none',
 		});
 		const task = await worker.initializeTask(Test1, {test: 'pre-start-false'}, {});
 		await worker.waitTask(task);
