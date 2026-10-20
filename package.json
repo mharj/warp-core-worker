@@ -38,25 +38,25 @@
 	},
 	"license": "MIT",
 	"devDependencies": {
-		"@biomejs/biome": "^2.5.14",
+		"@biomejs/biome": "^2.5.15",
 		"@luolapeikko/key-logger": "^0.1.0",
 		"@luolapeikko/logger-type": "^0.1.0",
 		"@luolapeikko/loglevel-type": "^0.1.0",
 		"@luolapeikko/sleep": "^0.4.2",
 		"@open-draft/deferred-promise": "^3.0.0",
-		"@types/node": "^24.13.6",
-		"@vitest/coverage-v8": "^5.0.1",
+		"@types/node": "^24.19.2",
+		"@vitest/coverage-v8": "^5.0.5",
 		"c8": "^12.0.0",
 		"cron": "^4.4.0",
-		"tsdown": "^0.23.0",
+		"tsdown": "^0.23.1",
 		"tslib": "^2.8.1",
 		"typedoc": "^0.28.20",
-		"typedoc-plugin-dt-links": "^2.0.74",
+		"typedoc-plugin-dt-links": "^2.0.77",
 		"typedoc-plugin-mdn-links": "^5.1.1",
 		"typescript": "^6.0.3",
-		"uuid": "^14.0.2",
-		"vite": "^8.3.0",
-		"vitest": "^5.0.1"
+		"uuid": "^14.0.3",
+		"vite": "^8.3.4",
+		"vitest": "^5.0.5"
 	},
 	"peerDependencies": {
 		"cron": ">=4.0.0"
